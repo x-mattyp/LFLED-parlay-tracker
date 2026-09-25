@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
+import TeamLogo from '../teamlogo';
 import { syncScores, saveSettings, loadTeams, saveTeamMap, refreshTeams, commishPick } from '../actions';
 
 function Msg({ state }) {
@@ -71,7 +72,7 @@ export function TeamLinks({ members, platform }) {
       <ul className="teamlist">
         {members.map((m) => (
           <li key={m.id}>
-            {m.team_logo ? <img src={m.team_logo} alt="" width="28" height="28" /> : <span className="logo-blank" aria-hidden="true" />}
+            <TeamLogo member={m} size={28} className="logo-small" />
             <span>
               <b>{m.team_name || 'Not linked yet'}</b>
               <span className="muted small"> {m.name}{m.team_owner ? ` (${m.team_owner})` : ''}</span>

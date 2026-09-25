@@ -5,6 +5,7 @@ import { getGames, hasStarted } from '@/lib/games';
 import { lowScorers, allScoresIn, parlayResult, estimateParlay, DEFAULT_STAKE } from '@/lib/stats';
 import GameBoard from './board';
 import PickFlow from './pickflow';
+import TeamLogo from './teamlogo';
 
 const LABEL = { win: 'WIN', loss: 'LOSS', push: 'PUSH', pending: 'Pending' };
 const money = (n) => (n == null ? '—' : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
@@ -118,11 +119,7 @@ export default async function WeekPage({ searchParams }) {
             const p = pickOf[m.id];
             return (
               <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
-                {m.team_logo ? (
-                  <img className="teamlogo" src={m.team_logo} alt="" width="36" height="36" loading="lazy" />
-                ) : (
-                  <span className="teamlogo blank" aria-hidden="true">{(m.team_abbr || m.name).slice(0, 2)}</span>
-                )}
+                <TeamLogo member={m} />
                 <span className="who">
                   {m.team_name || m.name}
                   {m.team_name && <span className="owner"> {m.name}</span>}

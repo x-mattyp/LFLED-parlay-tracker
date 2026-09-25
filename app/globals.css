@@ -233,3 +233,5 @@ optgroup { font-weight: 600; }
 .leg .stamp { grid-column: 3; grid-row: 1 / span 3; }
 .teamlogo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--field); }
 .teamlogo.blank { display: grid; place-items: center; font: 700 0.85rem var(--display); color: var(--muted); text-transform: uppercase; }
+.logo-small { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--field); display: block; }
+.logo-small.blank { display: grid; place-items: center; font: 700 0.7rem var(--display); color: var(--muted); text-transform: uppercase; }
