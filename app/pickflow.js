@@ -32,6 +32,7 @@ export default function PickFlow({ pickFirst, myPickLabel, canChange, board, sli
         </div>
       )}
       {open && board}
+      <h2>Everyone&rsquo;s picks</h2>
       {slip}
     </>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { savePick } from './actions';
 
 function Team({ game, side, selected, disabled, onPick }) {
@@ -24,17 +24,25 @@ function Team({ game, side, selected, disabled, onPick }) {
 
 export default function GameBoard({ weekId, locked, games, myPick }) {
   const [state, action, pending] = useActionState(savePick, null);
-  const [sel, setSel] = useState(myPick ? { eventId: myPick.eventId, teamId: myPick.teamId } : null);
-
-  // After a save or removal, snap the selection back to what's saved.
-  useEffect(() => {
-    setSel(myPick ? { eventId: myPick.eventId, teamId: myPick.teamId } : null);
-  }, [myPick?.eventId, myPick?.teamId]);
+  const [sel, setSel] = useState(null);
+  const dialogRef = useRef(null);
 
   const myLocked = !!myPick?.started;
   const chosen = sel && games.find((g) => g.eventId === sel.eventId);
   const chosenTeam = chosen && (chosen.home.id === sel.teamId ? chosen.home : chosen.away);
+  const otherTeam = chosen && (chosen.home.id === sel.teamId ? chosen.away : chosen.home);
   const isSaved = myPick && sel && myPick.eventId === sel.eventId && myPick.teamId === sel.teamId;
+
+  const open = (eventId, teamId) => {
+    setSel({ eventId, teamId });
+    dialogRef.current?.showModal();
+  };
+  const close = () => dialogRef.current?.close();
+
+  // Close the pop-up once a save goes through.
+  useEffect(() => {
+    if (state?.ok) close();
+  }, [state]);
 
   return (
     <section className="gameboard">
@@ -61,9 +69,9 @@ export default function GameBoard({ weekId, locked, games, myPick }) {
                     key={side}
                     game={g}
                     side={side}
-                    selected={sel?.eventId === g.eventId && sel?.teamId === g[side].id}
+                    selected={myPick?.eventId === g.eventId && myPick?.teamId === g[side].id}
                     disabled={off}
-                    onPick={(eventId, teamId) => setSel({ eventId, teamId })}
+                    onPick={open}
                   />
                 ))}
               </div>
@@ -72,18 +80,22 @@ export default function GameBoard({ weekId, locked, games, myPick }) {
         })}
       </ul>
 
-      {!locked && !myLocked && (
-        <form action={action} className="pickform" key={sel ? `${sel.eventId}:${sel.teamId}` : 'none'}>
-          <input type="hidden" name="week_id" value={weekId} />
-          <input type="hidden" name="pick" value={sel ? `${sel.eventId}:${sel.teamId}` : ''} />
-          {chosenTeam ? (
-            <p className="pickline">
-              <b>{chosenTeam.name}</b> to win {chosenTeam.ml ? <span className="muted">({chosenTeam.ml})</span> : null}
-            </p>
-          ) : (
-            <p className="muted">Tap a team above to make your pick.</p>
-          )}
-          {chosenTeam && (
+      <dialog ref={dialogRef} className="pickmodal" onClose={() => setSel(null)} aria-labelledby="pickmodal-title">
+        {chosenTeam && (
+          <form action={action} key={`${sel.eventId}:${sel.teamId}`}>
+            <input type="hidden" name="week_id" value={weekId} />
+            <input type="hidden" name="pick" value={`${sel.eventId}:${sel.teamId}`} />
+            <div className="pm-head">
+              {chosenTeam.logo && <img src={chosenTeam.logo} alt="" width="48" height="48" />}
+              <div>
+                <p className="muted small">{isSaved ? 'Your pick' : myPick ? 'Switch your pick to' : 'Your pick'}</p>
+                <h3 id="pickmodal-title">{chosenTeam.name} to win</h3>
+                <p className="muted small">
+                  {chosenTeam.ml ? `${chosenTeam.ml} moneyline · ` : ''}
+                  {chosen.home.id === sel.teamId ? 'vs' : '@'} {otherTeam.name}
+                </p>
+              </div>
+            </div>
             <label>
               Why this pick? Everyone will see it.
               <textarea
@@ -92,25 +104,24 @@ export default function GameBoard({ weekId, locked, games, myPick }) {
                 minLength={10}
                 maxLength={280}
                 rows={3}
+                autoFocus
                 defaultValue={isSaved ? myPick.rationale || '' : ''}
                 placeholder="Their O-line is healthy again and the other side is on a short week."
               />
             </label>
-          )}
-          <div className="inline">
-            {chosenTeam && (
-              <button disabled={pending}>{pending ? 'Saving…' : myPick ? 'Update pick' : 'Lock in pick'}</button>
-            )}
-            {myPick && (
-              <button className="ghost" name="intent" value="clear" formNoValidate disabled={pending}>
-                Remove my pick
-              </button>
-            )}
-          </div>
-          {state?.error && <p className="msg err" role="alert">{state.error}</p>}
-          {state?.ok && <p className="msg ok" role="status">{state.ok}</p>}
-        </form>
-      )}
+            {state?.error && <p className="msg err" role="alert">{state.error}</p>}
+            <div className="pm-actions">
+              <button disabled={pending}>{pending ? 'Saving…' : isSaved ? 'Update reason' : myPick ? 'Switch pick' : 'Lock in pick'}</button>
+              <button type="button" className="ghost" onClick={close} disabled={pending}>Cancel</button>
+              {myPick && (
+                <button className="linkish pm-remove" name="intent" value="clear" formNoValidate disabled={pending}>
+                  Remove my pick
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </dialog>
     </section>
   );
 }

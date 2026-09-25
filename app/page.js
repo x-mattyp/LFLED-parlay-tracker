@@ -97,41 +97,72 @@ export default async function WeekPage({ searchParams }) {
       )}
 
       {(() => {
+        const counts = { win: 0, loss: 0, push: 0, pending: 0 };
+        for (const p of picks) counts[p.result] += 1;
+        const oddsText = week.odds || est?.american || '—';
+        const winText = money(week.payout ?? est?.toWin);
+        const estimated = !week.odds || week.payout == null;
+        const ticketEl = (
+          <section className={`ticket ${status}`} aria-label={`Week ${n} parlay ticket`}>
+            <div className="ticket-head">
+              <span className="book">LFLED Sportsbook</span>
+              <span className="tno">#{settings.season}-W{String(n).padStart(2, '0')}</span>
+              <svg className="football" viewBox="0 0 64 36" aria-hidden="true">
+                <ellipse cx="32" cy="18" rx="30" ry="16" fill="#8a4b22" />
+                <ellipse cx="32" cy="18" rx="30" ry="16" fill="none" stroke="#5e3114" strokeWidth="2" />
+                <path d="M8 9 Q4 18 8 27 M56 9 Q60 18 56 27" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+                <path d="M20 18 H44" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+                <path d="M24 14 V22 M28 14 V22 M32 14 V22 M36 14 V22 M40 14 V22" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="ticket-title">
+              <div>
+                <p className="kicker">Week {n} · {picks.length}-leg parlay</p>
+                <p className="odds">{oddsText}</p>
+              </div>
+              <span className={`stamp big ${status}`}>{LABEL[status]}</span>
+            </div>
+            <dl className="ticket-nums">
+              <div><dt>Stake</dt><dd>{money(stake)}</dd></div>
+              <div><dt>{week.payout != null ? 'To win' : 'Est. to win'}</dt><dd>{winText}</dd></div>
+              <div><dt>Picks in</dt><dd>{picks.length}/{members.length}</dd></div>
+            </dl>
+            <div className="legdots" role="img" aria-label={`${counts.win} won, ${counts.loss} lost, ${counts.push} pushed, ${counts.pending} pending, ${members.length - picks.length} missing`}>
+              {legs.map((m, i) => {
+                const p = pickOf[m.id];
+                return <span key={m.id} style={{ '--i': i }} className={`dot ${p ? p.result : 'none'}`} title={`${m.team_name || m.name}: ${p ? LABEL[p.result] : 'No pick'}`} />;
+              })}
+            </div>
+            <div className="ticket-foot">
+              <span className="barcode" aria-hidden="true" />
+              <span className="small">
+                {estimated ? 'Estimated from everyone\u2019s odds' : 'Bet placed'}
+                {estimated && est?.unpriced > 0 ? ` · ${est.unpriced} leg${est.unpriced === 1 ? '' : 's'} without odds left out` : ''}
+                {week.locked ? ' · Picks locked' : ''}
+              </span>
+            </div>
+          </section>
+        );
         const slipEl = (
-      <section className="slip" aria-label={`Week ${n} parlay`}>
-        <div className="slip-top">
-          <h3>{picks.length}-leg parlay</h3>
-          <span className={`stamp big ${status}`}>{LABEL[status]}</span>
-        </div>
-        <div className="slip-meta">
-          <div><span>Picks in</span><b>{picks.length}/{members.length}</b></div>
-          <div><span>Stake</span><b>{money(stake)}</b></div>
-          <div><span>{week.odds ? 'Odds' : 'Est. odds'}</span><b>{week.odds || est?.american || '—'}</b></div>
-          <div><span>{week.payout != null ? 'To win' : 'Est. to win'}</span><b>{money(week.payout ?? est?.toWin)}</b></div>
-          {week.locked && <div><span>Picks</span><b>Locked</b></div>}
-        </div>
-        {!week.odds && est?.unpriced > 0 && (
-          <p className="slip-note muted small">Estimate leaves out {est.unpriced} leg{est.unpriced === 1 ? '' : 's'} with no odds.</p>
-        )}
-        <div className="perf" aria-hidden="true" />
-        <ul className="legs">
-          {legs.map((m) => {
-            const p = pickOf[m.id];
-            return (
-              <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
-                <TeamLogo member={m} />
-                <span className="who">
-                  {m.team_name || m.name}
-                  {m.team_name && <span className="owner"> {m.name}</span>}
-                </span>
-                <span className={`bet${p ? '' : ' empty'}`}>{p ? legText(p) : 'No pick yet'}</span>
-                {p?.rationale && <q className="why">{p.rationale}</q>}
-                {p && <span className={`stamp ${p.result}`}>{LABEL[p.result]}</span>}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+          <section className="picks" aria-label={`Week ${n} picks`}>
+            <ul className="legs">
+              {legs.map((m) => {
+                const p = pickOf[m.id];
+                return (
+                  <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
+                    <TeamLogo member={m} />
+                    <span className="who">
+                      {m.team_name || m.name}
+                      {m.team_name && <span className="owner"> {m.name}</span>}
+                    </span>
+                    <span className={`bet${p ? '' : ' empty'}`}>{p ? legText(p) : 'No pick yet'}</span>
+                    {p?.rationale && <q className="why">{p.rationale}</q>}
+                    {p && <span className={`stamp ${p.result}`}>{LABEL[p.result]}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         );
         const boardEl = matchupWeek ? (
           <>
@@ -158,6 +189,7 @@ export default async function WeekPage({ searchParams }) {
         const canPick = matchupWeek && n === current && !week.locked && boardGames.some((g) => !g.started);
         return (
           <>
+            {ticketEl}
             {!matchupWeek && <p className="muted small">Picks for week {n} were entered by the commissioner.</p>}
             <PickFlow
               key={myPick ? `${myPick.event_id}:${myPick.team_id}` : 'none'}
