@@ -6,6 +6,7 @@ import { lowScorers, allScoresIn, parlayResult, estimateParlay, DEFAULT_STAKE } 
 import GameBoard from './board';
 import PickFlow from './pickflow';
 import TeamLogo from './teamlogo';
+import LiveRefresh from './liverefresh';
 
 const LABEL = { win: 'WIN', loss: 'LOSS', push: 'PUSH', pending: 'Pending' };
 const money = (n) => (n == null ? '—' : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
@@ -65,6 +66,22 @@ export default async function WeekPage({ searchParams }) {
   const stake = week.stake ?? DEFAULT_STAKE;
   const est = estimateParlay(picks, stake);
 
+  // Where a pending leg stands right now: leading, trailing or tied, with the
+  // score and game clock. Null before kickoff and once the leg is graded.
+  function liveOf(p) {
+    if (!p || p.result !== 'pending' || !p.event_id) return null;
+    const g = gameOf[p.event_id];
+    if (!g || g.completed || !hasStarted(g) || g.home_score == null || g.away_score == null) return null;
+    const home = p.team_id === g.home_id;
+    const mine = home ? g.home_score : g.away_score;
+    const theirs = home ? g.away_score : g.home_score;
+    const state = mine > theirs ? 'lead' : mine < theirs ? 'trail' : 'tied';
+    const abbr = home ? g.home_abbr : g.away_abbr;
+    const opp = home ? g.away_abbr : g.home_abbr;
+    return { state, text: `${abbr} ${mine}, ${opp} ${theirs}`, clock: g.status_detail || 'Live' };
+  }
+  const liveGames = games.filter((g) => !g.completed && hasStarted(g));
+
   function legText(p) {
     if (!p.event_id) return `${p.bet}${p.odds ? ` (${p.odds})` : ''}`;
     const g = gameOf[p.event_id];
@@ -99,6 +116,18 @@ export default async function WeekPage({ searchParams }) {
       {(() => {
         const counts = { win: 0, loss: 0, push: 0, pending: 0 };
         for (const p of picks) counts[p.result] += 1;
+        const track = { lead: 0, trail: 0, tied: 0 };
+        for (const p of picks) { const l = liveOf(p); if (l) track[l.state] += 1; }
+        const live = track.lead + track.trail + track.tied;
+        const toPlay = counts.pending - live;
+        const trackParts = [
+          counts.win && `${counts.win} won`,
+          counts.loss && `${counts.loss} lost`,
+          track.lead && `${track.lead} winning`,
+          track.trail && `${track.trail} losing`,
+          track.tied && `${track.tied} tied`,
+          toPlay > 0 && `${toPlay} to play`,
+        ].filter(Boolean);
         const oddsText = week.odds || est?.american || '—';
         const toWin = week.payout != null ? Number(week.payout) : est?.toWin ?? null;
         const share = toWin != null && picks.length ? (Number(stake) + toWin) / picks.length : null;
@@ -140,19 +169,28 @@ export default async function WeekPage({ searchParams }) {
                 const who = m.team_name || m.name;
                 const what = p ? (p.team_name ? `${p.team_name} ML` : p.bet) : 'No pick yet';
                 const mark = p?.result === 'win' ? '✓' : p?.result === 'loss' ? '✕' : p?.result === 'push' ? '–' : null;
+                const l = liveOf(p);
+                const tip = l ? `${l.text} · ${l.clock}` : p ? LABEL[p.result] : '';
                 return (
-                  <li key={m.id} style={{ '--i': i }} className={`legchip ${p ? p.result : 'none'}`} title={`${who}: ${what}${p ? ` (${LABEL[p.result]})` : ''}`}>
+                  <li key={m.id} style={{ '--i': i }} className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`} title={`${who}: ${what}${tip ? ` (${tip})` : ''}`}>
                     {logo ? (
                       <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
                     ) : (
                       <span className="chipabbr">{p ? (matchupWeek ? (p.team_abbr || '?').slice(0, 3) : { win: 'W', loss: 'L', push: 'P', pending: '•' }[p.result]) : ''}</span>
                     )}
                     {mark && <span className="chipmark" aria-hidden="true">{mark}</span>}
-                    <span className="sr-only">{who}: {what}{p ? `, ${LABEL[p.result]}` : ''}</span>
+                    {l && <span className="chiplive" aria-hidden="true" />}
+                    <span className="sr-only">{who}: {what}{tip ? `, ${tip}` : ''}</span>
                   </li>
                 );
               })}
             </ul>
+            {matchupWeek && trackParts.length > 0 && (
+              <p className="tracking">
+                {live > 0 && status !== 'loss' && <span className="livebadge">Live</span>}
+                {trackParts.join(' · ')}
+              </p>
+            )}
             <div className="ticket-foot">
               <span className="barcode" aria-hidden="true" />
               <span className="small">
@@ -177,6 +215,14 @@ export default async function WeekPage({ searchParams }) {
                       {m.team_name && <span className="owner"> {m.name}</span>}
                     </span>
                     <span className={`bet${p ? '' : ' empty'}`}>{p ? legText(p) : 'No pick yet'}</span>
+                    {(() => {
+                      const l = liveOf(p);
+                      return l ? (
+                        <span className={`liveline ${l.state}`}>
+                          {l.state === 'lead' ? 'Winning' : l.state === 'trail' ? 'Losing' : 'Tied'} · {l.text} · {l.clock}
+                        </span>
+                      ) : null;
+                    })()}
                     {p?.rationale && <q className="why">{p.rationale}</q>}
                     {p && <span className={`stamp ${p.result}`}>{LABEL[p.result]}</span>}
                   </li>
@@ -210,6 +256,7 @@ export default async function WeekPage({ searchParams }) {
         const canPick = matchupWeek && n === current && !week.locked && boardGames.some((g) => !g.started);
         return (
           <>
+            {n === current && liveGames.length > 0 && <LiveRefresh seconds={60} />}
             {ticketEl}
             {!matchupWeek && <p className="muted small">Picks for week {n} were entered by the commissioner.</p>}
             <PickFlow

@@ -335,3 +335,28 @@ optgroup { font-weight: 600; }
 .logoform input[type='file'] { padding: 6px; font-size: 0.9rem; max-width: 100%; }
 
 .ticket-nums .share dd { color: #1d7f48; }
+
+/* ---------- Live tracking ---------- */
+.legchip.live.lead { border-color: #1d7f48; border-style: dashed; }
+.legchip.live.trail { border-color: #c3352b; border-style: dashed; }
+.legchip.live.tied { border-color: #b7860b; border-style: dashed; }
+.chiplive {
+  position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%;
+  background: #c3352b; border: 2px solid var(--paper-ticket);
+}
+.legchip.lead .chiplive { background: #1d7f48; }
+.legchip.tied .chiplive { background: #b7860b; }
+.tracking { margin: 6px 0 0; font-size: 0.9rem; line-height: 1.6; color: var(--ticket-ink); }
+.tracking .livebadge { display: inline-block; margin-right: 8px; vertical-align: 1px; }
+.livebadge {
+  font: 700 0.75rem/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase;
+  color: #fff; background: #c3352b; border-radius: 4px; padding: 4px 6px 3px;
+}
+.leg .liveline { grid-column: 2; font-size: 0.85rem; font-weight: 600; }
+.liveline.lead { color: var(--win); }
+.liveline.trail { color: var(--loss); }
+.liveline.tied { color: #b7860b; }
+@media (prefers-reduced-motion: no-preference) {
+  .chiplive, .livebadge { animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+}
