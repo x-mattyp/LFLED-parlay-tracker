@@ -4,6 +4,7 @@ import { getSettings, getWeekBundle } from '@/lib/data';
 import { gradePick, toggleLock, saveParlay, saveScores, advanceWeek, resetPin, saveLegacyPicks } from '../actions';
 import { SyncButton, SettingsForm, TeamLinks, CommishPickForm } from './client';
 import { getGames } from '@/lib/games';
+import { estimateParlay, DEFAULT_STAKE } from '@/lib/stats';
 
 const RESULTS = ['win', 'loss', 'push', 'pending'];
 const LABEL = { win: 'Win', loss: 'Loss', push: 'Push', pending: 'Pending' };
@@ -20,6 +21,8 @@ export default async function AdminPage({ searchParams }) {
   const nameOf = Object.fromEntries(members.map((m) => [m.id, m.team_name || m.name]));
   const pickOf = Object.fromEntries(picks.map((p) => [p.member_id, p]));
   const legacy = legacyWeek;
+  const est = estimateParlay(picks, week.stake ?? DEFAULT_STAKE);
+  const fmt = (x) => x.toFixed(2);
 
   return (
     <>
@@ -111,10 +114,16 @@ export default async function AdminPage({ searchParams }) {
       <h2>Parlay ticket</h2>
       <form action={saveParlay} className="panel">
         <input type="hidden" name="week_id" value={week.id} />
+        <p className="muted small">
+          {est
+            ? `Estimated from everyone's odds: ${est.american}, $${fmt(est.toWin)} to win on $${week.stake ?? DEFAULT_STAKE}${est.unpriced ? ` (${est.unpriced} leg${est.unpriced === 1 ? '' : 's'} with no odds left out)` : ''}. `
+            : 'The estimate shows up once picks with odds are in. '}
+          Once the bet is placed, enter the real odds and payout so the slip shows them instead.
+        </p>
         <div className="formgrid">
-          <label>Stake<input name="stake" inputMode="decimal" defaultValue={week.stake ?? ''} placeholder="14" /></label>
-          <label>Odds<input name="odds" defaultValue={week.odds ?? ''} placeholder="+45000" /></label>
-          <label>To win<input name="payout" inputMode="decimal" defaultValue={week.payout ?? ''} placeholder="6300" /></label>
+          <label>Stake<input name="stake" inputMode="decimal" defaultValue={week.stake ?? DEFAULT_STAKE} /></label>
+          <label>Actual odds<input name="odds" defaultValue={week.odds ?? ''} placeholder={est?.american || '+45000'} /></label>
+          <label>Actual to win<input name="payout" inputMode="decimal" defaultValue={week.payout ?? ''} placeholder={est ? fmt(est.toWin) : '6300'} /></label>
         </div>
         <button>Save ticket</button>
       </form>

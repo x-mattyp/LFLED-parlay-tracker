@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { requireMember } from '@/lib/session';
 import { getSettings, getWeekBundle, getScoresFor } from '@/lib/data';
 import { getGames, hasStarted } from '@/lib/games';
-import { lowScorers, allScoresIn, parlayResult } from '@/lib/stats';
+import { lowScorers, allScoresIn, parlayResult, estimateParlay, DEFAULT_STAKE } from '@/lib/stats';
 import GameBoard from './board';
+import PickFlow from './pickflow';
 
 const LABEL = { win: 'WIN', loss: 'LOSS', push: 'PUSH', pending: 'Pending' };
 const money = (n) => (n == null ? '—' : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
@@ -60,6 +61,8 @@ export default async function WeekPage({ searchParams }) {
     };
   });
   const myGame = myPick?.event_id ? gameOf[myPick.event_id] : null;
+  const stake = week.stake ?? DEFAULT_STAKE;
+  const est = estimateParlay(picks, stake);
 
   function legText(p) {
     if (!p.event_id) return `${p.bet}${p.odds ? ` (${p.odds})` : ''}`;
@@ -92,6 +95,8 @@ export default async function WeekPage({ searchParams }) {
         </div>
       )}
 
+      {(() => {
+        const slipEl = (
       <section className="slip" aria-label={`Week ${n} parlay`}>
         <div className="slip-top">
           <h3>{picks.length}-leg parlay</h3>
@@ -99,17 +104,25 @@ export default async function WeekPage({ searchParams }) {
         </div>
         <div className="slip-meta">
           <div><span>Picks in</span><b>{picks.length}/{members.length}</b></div>
-          <div><span>Stake</span><b>{money(week.stake)}</b></div>
-          <div><span>Odds</span><b>{week.odds || '—'}</b></div>
-          <div><span>To win</span><b>{money(week.payout)}</b></div>
+          <div><span>Stake</span><b>{money(stake)}</b></div>
+          <div><span>{week.odds ? 'Odds' : 'Est. odds'}</span><b>{week.odds || est?.american || '—'}</b></div>
+          <div><span>{week.payout != null ? 'To win' : 'Est. to win'}</span><b>{money(week.payout ?? est?.toWin)}</b></div>
           {week.locked && <div><span>Picks</span><b>Locked</b></div>}
         </div>
+        {!week.odds && est?.unpriced > 0 && (
+          <p className="slip-note muted small">Estimate leaves out {est.unpriced} leg{est.unpriced === 1 ? '' : 's'} with no odds.</p>
+        )}
         <div className="perf" aria-hidden="true" />
         <ul className="legs">
           {legs.map((m) => {
             const p = pickOf[m.id];
             return (
               <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
+                {m.team_logo ? (
+                  <img className="teamlogo" src={m.team_logo} alt="" width="36" height="36" loading="lazy" />
+                ) : (
+                  <span className="teamlogo blank" aria-hidden="true">{(m.team_abbr || m.name).slice(0, 2)}</span>
+                )}
                 <span className="who">
                   {m.team_name || m.name}
                   {m.team_name && <span className="owner"> {m.name}</span>}
@@ -122,31 +135,44 @@ export default async function WeekPage({ searchParams }) {
           })}
         </ul>
       </section>
-
-      {matchupWeek ? (
-        <>
-          <h2>Pick a team to win</h2>
-          <p className="muted small">
-            Moneyline only. Once someone takes a game, both sides are off the board. Picks lock at kickoff.
-          </p>
-          {boardGames.length ? (
-            <GameBoard
-              weekId={week.id}
-              locked={week.locked}
-              games={boardGames}
-              myPick={
-                myPick?.event_id
-                  ? { eventId: myPick.event_id, teamId: myPick.team_id, rationale: myPick.rationale, started: myGame ? hasStarted(myGame) : false }
-                  : null
-              }
+        );
+        const boardEl = matchupWeek ? (
+          <>
+            <h2>{myPick ? 'Change your pick' : 'Pick a team to win'}</h2>
+            <p className="muted small">
+              Moneyline only. Once someone takes a game, both sides are off the board. Picks lock at kickoff.
+            </p>
+            {boardGames.length ? (
+              <GameBoard
+                weekId={week.id}
+                locked={week.locked}
+                games={boardGames}
+                myPick={
+                  myPick?.event_id
+                    ? { eventId: myPick.event_id, teamId: myPick.team_id, rationale: myPick.rationale, started: myGame ? hasStarted(myGame) : false }
+                    : null
+                }
+              />
+            ) : (
+              <p className="muted">This week&rsquo;s games haven&rsquo;t loaded from ESPN yet. Check back in a few minutes.</p>
+            )}
+          </>
+        ) : null;
+        const canPick = matchupWeek && n === current && !week.locked && boardGames.some((g) => !g.started);
+        return (
+          <>
+            {!matchupWeek && <p className="muted small">Picks for week {n} were entered by the commissioner.</p>}
+            <PickFlow
+              key={myPick ? `${myPick.event_id}:${myPick.team_id}` : 'none'}
+              pickFirst={canPick && !myPick}
+              myPickLabel={matchupWeek && myPick ? legText(myPick) : null}
+              canChange={canPick && !!myPick && !(myGame && hasStarted(myGame))}
+              board={boardEl}
+              slip={slipEl}
             />
-          ) : (
-            <p className="muted">This week&rsquo;s games haven&rsquo;t loaded from ESPN yet. Check back in a few minutes.</p>
-          )}
-        </>
-      ) : (
-        <p className="muted small">Picks for week {n} were entered by the commissioner.</p>
-      )}
+          </>
+        );
+      })()}
 
       <h2>Fantasy scores</h2>
       {board.length ? (
