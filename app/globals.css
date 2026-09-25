@@ -369,3 +369,24 @@ optgroup { font-weight: 600; }
   .login-crest { animation: settle 700ms cubic-bezier(.2, 1.4, .4, 1) both; }
   @keyframes settle { from { transform: rotate(-14deg) scale(0.85); opacity: 0; } }
 }
+
+/* Login: pick your team */
+.login { max-width: 560px; }
+.login-crest { width: min(180px, 48vw); }
+.teampick { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.teampick button {
+  width: 100%; height: 100%; display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center;
+  background: var(--paper); color: var(--ink); border: 2px solid transparent; border-radius: 12px; padding: 14px 10px 12px;
+  font: inherit; letter-spacing: 0;
+}
+.teampick button:hover { border-color: var(--rule); }
+.teampick button:focus-visible { border-color: var(--focus); }
+.tp-logo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--field); display: block; }
+.tp-logo.blank { display: grid; place-items: center; font: 800 1.3rem var(--display); color: var(--muted); text-transform: uppercase; }
+.tp-team { font: 700 1.05rem/1.15 var(--display); }
+.tp-name { font-size: 0.8rem; color: var(--muted); }
+.pinpanel { max-width: 380px; margin: 8px auto 0; }
+.pp-who { display: flex; align-items: center; gap: 12px; }
+.pp-who .tp-logo { width: 64px; height: 64px; }
+.pp-who b { display: block; font: 700 1.25rem/1.15 var(--display); }
+@media (max-width: 420px) { .teampick { grid-template-columns: repeat(2, 1fr); } }
