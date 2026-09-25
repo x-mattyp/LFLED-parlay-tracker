@@ -4,6 +4,7 @@ import { getSettings } from '@/lib/data';
 import { autoSync } from '@/lib/sync';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // Vercel Cron hits this every morning (see vercel.json).
 export async function GET(req) {

@@ -6,6 +6,9 @@ import { SyncButton, SettingsForm, TeamLinks, CommishPickForm } from './client';
 import { getGames } from '@/lib/games';
 import { estimateParlay, DEFAULT_STAKE } from '@/lib/stats';
 
+// Refreshing teams downloads every logo from ESPN, which can be slow.
+export const maxDuration = 60;
+
 const RESULTS = ['win', 'loss', 'push', 'pending'];
 const LABEL = { win: 'Win', loss: 'Loss', push: 'Push', pending: 'Pending' };
 
