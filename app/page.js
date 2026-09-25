@@ -32,16 +32,17 @@ export default async function WeekPage({ searchParams }) {
     n > 1 ? getScoresFor(settings.season, n - 1) : Promise.resolve([]),
   ]);
 
-  const nameOf = Object.fromEntries(members.map((m) => [m.id, m.name]));
+  const nameOf = Object.fromEntries(members.map((m) => [m.id, m.team_name || m.name]));
+  const memberOf = Object.fromEntries(members.map((m) => [m.id, m]));
   const pickOf = Object.fromEntries(picks.map((p) => [p.member_id, p]));
   const gameOf = Object.fromEntries(games.map((g) => [g.event_id, g]));
   const myPick = pickOf[me.id];
 
   const buyers = allScoresIn(prevScores, members) ? lowScorers(prevScores).map((id) => nameOf[id]) : [];
-  const complete = allScoresIn(scores, members);
+  const complete = allScoresIn(scores, members) && n < current;
   const nextBuyers = complete ? lowScorers(scores) : [];
 
-  const legs = [...members].sort((a, b) => (a.id === me.id ? -1 : b.id === me.id ? 1 : a.name.localeCompare(b.name)));
+  const legs = [...members].sort((a, b) => (a.id === me.id ? -1 : b.id === me.id ? 1 : (a.team_name || a.name).localeCompare(b.team_name || b.name)));
   const status = parlayResult(picks);
   const board = [...scores].sort((a, b) => Number(b.points) - Number(a.points));
 
@@ -109,7 +110,10 @@ export default async function WeekPage({ searchParams }) {
             const p = pickOf[m.id];
             return (
               <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
-                <span className="who">{m.name}</span>
+                <span className="who">
+                  {m.team_name || m.name}
+                  {m.team_name && <span className="owner"> {m.name}</span>}
+                </span>
                 <span className={`bet${p ? '' : ' empty'}`}>{p ? legText(p) : 'No pick yet'}</span>
                 {p?.rationale && <q className="why">{p.rationale}</q>}
                 {p && <span className={`stamp ${p.result}`}>{LABEL[p.result]}</span>}
@@ -152,6 +156,7 @@ export default async function WeekPage({ searchParams }) {
               <span className="rank">{i + 1}</span>
               <span>
                 {nameOf[s.member_id]}
+                {memberOf[s.member_id]?.team_name && <span className="owner"> {memberOf[s.member_id].name}</span>}
                 {nextBuyers.includes(s.member_id) && <span className="note">Buys week {n + 1}&rsquo;s parlay</span>}
               </span>
               <span className="pts">{Number(s.points).toFixed(2)}</span>
@@ -161,8 +166,12 @@ export default async function WeekPage({ searchParams }) {
       ) : (
         <p className="muted">No scores yet. They sync from ESPN every morning.</p>
       )}
-      {board.length > 0 && !complete && (
-        <p className="muted small">{members.length - scores.length} score(s) still missing, so next week&rsquo;s buyer isn&rsquo;t final.</p>
+      {board.length > 0 && !complete && (n === current || scores.length < members.length) && (
+        <p className="muted small">
+          {n < current
+            ? `${members.length - scores.length} score(s) still missing, so week ${n + 1}'s buyer isn't final.`
+            : `Week ${n} is still being played. The lowest score when it ends buys week ${n + 1}.`}
+        </p>
       )}
     </>
   );

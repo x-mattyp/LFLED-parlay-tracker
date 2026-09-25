@@ -5,7 +5,7 @@ import { login, pinStatus } from '../actions';
 
 const digitsOnly = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); };
 
-export default function LoginForm({ names }) {
+export default function LoginForm({ people }) {
   const [state, action, pending] = useActionState(login, null);
   const [name, setName] = useState('');
   const [hasPin, setHasPin] = useState(null);
@@ -24,7 +24,7 @@ export default function LoginForm({ names }) {
         Name
         <select name="name" value={name} onChange={(e) => setName(e.target.value)} required>
           <option value="" disabled>Choose your name</option>
-          {names.map((n) => <option key={n}>{n}</option>)}
+          {people.map((p) => <option key={p.name} value={p.name}>{p.team ? `${p.name} (${p.team})` : p.name}</option>)}
         </select>
       </label>
       <label>

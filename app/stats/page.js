@@ -37,7 +37,7 @@ export default async function StatsPage() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.member.id}>
-                <td>{r.member.name}</td>
+                <td>{r.member.team_name || r.member.name}{r.member.team_name && <span className="owner"> {r.member.name}</span>}</td>
                 <td className="w">{r.win}</td>
                 <td className="l">{r.loss}</td>
                 <td>{r.push}</td>
@@ -64,7 +64,7 @@ export default async function StatsPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.member.id}>
-                  <td>{r.member.name}</td>
+                  <td>{r.member.team_name || r.member.name}{r.member.team_name && <span className="owner"> {r.member.name}</span>}</td>
                   {weeks.map((w) => {
                     const p = pickAt.get(`${w.id}:${r.member.id}`);
                     const res = p?.result;

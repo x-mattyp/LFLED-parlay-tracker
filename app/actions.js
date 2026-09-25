@@ -8,7 +8,7 @@ import { createSession, destroySession, requireMember, requireAdmin } from '@/li
 import { getSettings, getOrCreateWeek } from '@/lib/data';
 import { hasStarted } from '@/lib/games';
 import { fetchTeams } from '@/lib/providers';
-import { syncWeek } from '@/lib/sync';
+import { syncWeek, linkTeams } from '@/lib/sync';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
@@ -83,38 +83,30 @@ async function gameById(eventId) {
   return check(await db().from('games').select('*').eq('event_id', eventId).limit(1))[0] || null;
 }
 
-// Moneyline pick from the week's NFL slate, with a required rationale.
-// The unique (week_id, event_id) constraint is what blocks anyone else from
-// taking a game once it's claimed, even if two people tap at the same moment.
-export async function savePick(_prev, formData) {
-  const me = await requireMember();
-  const weekId = Number(formData.get('week_id'));
+// Places (or replaces) one member's moneyline pick. Players go through the
+// kickoff and weekly locks; the commissioner can skip them (asCommish) to
+// enter a pick someone texted in. Either way the unique (week_id, event_id)
+// constraint blocks two people from taking the same game.
+async function placePick({ memberId, weekId, pick, rationale, asCommish }) {
   const [week, settings] = await Promise.all([
     db().from('weeks').select('*').eq('id', weekId).single().then(check),
     getSettings(),
   ]);
-  if (week.week < settings.ml_start_week) return { error: 'The commissioner enters picks for this week.' };
-  if (week.locked) return { error: 'Picks are locked for this week.' };
+  if (week.week < settings.ml_start_week) return { error: 'Picks for this week are entered in the table below.' };
+  if (!asCommish && week.locked) return { error: 'Picks are locked for this week.' };
 
-  const mine = check(await db().from('picks').select('event_id').eq('week_id', weekId).eq('member_id', me.id).limit(1))[0];
-  const myGame = mine?.event_id ? await gameById(mine.event_id) : null;
-  if (myGame && hasStarted(myGame)) return { error: 'Your game already kicked off, so your pick is locked in.' };
+  const current = check(await db().from('picks').select('event_id').eq('week_id', weekId).eq('member_id', memberId).limit(1))[0];
+  const currentGame = current?.event_id ? await gameById(current.event_id) : null;
+  if (!asCommish && currentGame && hasStarted(currentGame)) return { error: 'Your game already kicked off, so your pick is locked in.' };
 
-  if (formData.get('intent') === 'clear') {
-    if (!mine) return { error: "You don't have a pick to remove." };
-    check(await db().from('picks').delete().eq('week_id', weekId).eq('member_id', me.id));
-    refresh();
-    return { ok: 'Pick removed. Your game is open for others again.' };
-  }
-
-  const [eventId, teamId] = String(formData.get('pick') || '').split(':');
-  const rationale = String(formData.get('rationale') || '').trim().replace(/\s+/g, ' ');
-  if (!eventId || !teamId) return { error: 'Tap a team to pick first.' };
-  if (rationale.length < RATIONALE_MIN) return { error: `Add a reason for your pick (at least ${RATIONALE_MIN} characters).` };
+  const [eventId, teamId] = String(pick || '').split(':');
+  const why = String(rationale || '').trim().replace(/\s+/g, ' ');
+  if (!eventId || !teamId) return { error: asCommish ? 'Choose a team first.' : 'Tap a team to pick first.' };
+  if (!asCommish && why.length < RATIONALE_MIN) return { error: `Add a reason for your pick (at least ${RATIONALE_MIN} characters).` };
 
   const game = await gameById(eventId);
   if (!game || game.season !== week.season || game.week !== week.week) return { error: "That game isn't on this week's slate." };
-  if (hasStarted(game)) return { error: 'That game already kicked off.' };
+  if (!asCommish && hasStarted(game)) return { error: 'That game already kicked off.' };
   const side = teamId === game.home_id ? 'home' : teamId === game.away_id ? 'away' : null;
   if (!side) return { error: 'Pick one of the two teams in that game.' };
 
@@ -123,25 +115,78 @@ export async function savePick(_prev, formData) {
     .upsert(
       {
         week_id: weekId,
-        member_id: me.id,
+        member_id: memberId,
         event_id: eventId,
         team_id: teamId,
         team_abbr: game[`${side}_abbr`],
         team_name: game[`${side}_name`],
         bet: `${game[`${side}_abbr`]} ML`,
         odds: game[`${side}_ml`],
-        rationale: rationale.slice(0, RATIONALE_MAX),
-        result: 'pending',
+        rationale: why ? why.slice(0, RATIONALE_MAX) : null,
+        result: game.completed ? (game.winner_id ? (game.winner_id === teamId ? 'win' : 'loss') : 'push') : 'pending',
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'week_id,member_id' }
     );
   if (error) {
-    if (error.code === '23505') return { error: 'Someone just took that game. Pick another one.' };
-    return { error: `Couldn't save your pick: ${error.message}` };
+    if (error.code === '23505') return { error: 'Someone already has that game. Pick another one.' };
+    return { error: `Couldn't save the pick: ${error.message}` };
   }
   refresh();
-  return { ok: `Locked in: ${game[`${side}_name`]} to win.` };
+  return { ok: `Locked in: ${game[`${side}_name`]} to win.`, game, side };
+}
+
+// A player's own pick from the matchup board.
+export async function savePick(_prev, formData) {
+  const me = await requireMember();
+  const weekId = Number(formData.get('week_id'));
+
+  if (formData.get('intent') === 'clear') {
+    const week = check(await db().from('weeks').select('locked').eq('id', weekId).single());
+    if (week.locked) return { error: 'Picks are locked for this week.' };
+    const mine = check(await db().from('picks').select('event_id').eq('week_id', weekId).eq('member_id', me.id).limit(1))[0];
+    if (!mine) return { error: "You don't have a pick to remove." };
+    const g = mine.event_id ? await gameById(mine.event_id) : null;
+    if (g && hasStarted(g)) return { error: 'Your game already kicked off, so your pick is locked in.' };
+    check(await db().from('picks').delete().eq('week_id', weekId).eq('member_id', me.id));
+    refresh();
+    return { ok: 'Pick removed. Your game is open for others again.' };
+  }
+
+  const res = await placePick({
+    memberId: me.id,
+    weekId,
+    pick: formData.get('pick'),
+    rationale: formData.get('rationale'),
+    asCommish: false,
+  });
+  return res.error ? { error: res.error } : { ok: res.ok };
+}
+
+// The commissioner placing or removing a pick for someone else.
+export async function commishPick(_prev, formData) {
+  await requireAdmin();
+  const weekId = Number(formData.get('week_id'));
+  const memberId = Number(formData.get('member_id'));
+  if (!memberId) return { error: 'Choose who the pick is for.' };
+  const who = check(await db().from('members').select('name, team_name').eq('id', memberId).single());
+  const whoLabel = who.team_name || who.name;
+
+  if (formData.get('intent') === 'clear') {
+    check(await db().from('picks').delete().eq('week_id', weekId).eq('member_id', memberId));
+    refresh();
+    return { ok: `Removed ${whoLabel}'s pick.` };
+  }
+
+  const res = await placePick({
+    memberId,
+    weekId,
+    pick: formData.get('pick'),
+    rationale: formData.get('rationale'),
+    asCommish: true,
+  });
+  if (res.error) return { error: res.error };
+  return { ok: `Saved for ${whoLabel}: ${res.game[`${res.side}_name`]} to win.` };
 }
 
 // ---------- Commissioner tools ----------
@@ -233,8 +278,9 @@ export async function syncScores(_prev, formData) {
     const settings = await getSettings();
     const { saved, unmapped } = await syncWeek(settings, Number(formData.get('week')));
     refresh();
+    if (!saved) return { error: `No scores came back from the league for week ${formData.get('week')} yet.` + (unmapped.length ? ` No team linked for ${unmapped.join(', ')}.` : '') };
     return {
-      ok: `Pulled ${saved} score${saved === 1 ? '' : 's'}.` + (unmapped.length ? ` No team matched for ${unmapped.join(', ')}.` : ''),
+      ok: `Pulled ${saved} score${saved === 1 ? '' : 's'}.` + (unmapped.length ? ` No team linked for ${unmapped.join(', ')}.` : ''),
     };
   } catch (e) {
     return { error: `Sync failed: ${e.message}` };
@@ -266,6 +312,20 @@ export async function saveSettings(_prev, formData) {
   return { ok: 'Settings saved.' };
 }
 
+// Re-links everyone to their fantasy team and refreshes team names.
+export async function refreshTeams() {
+  await requireAdmin();
+  try {
+    const { linked, missing } = await linkTeams(await getSettings());
+    refresh();
+    return missing.length
+      ? { error: `Linked ${linked} teams. Couldn't find a team for ${missing.join(', ')}. Fix it below.` }
+      : { ok: `All ${linked} teams linked.` };
+  } catch (e) {
+    return { error: `Couldn't reach the league: ${e.message}` };
+  }
+}
+
 export async function loadTeams() {
   await requireAdmin();
   try {
@@ -275,18 +335,31 @@ export async function loadTeams() {
   }
 }
 
-export async function saveTeamMap(formData) {
+// Manual override for the rare case auto-linking gets someone wrong.
+export async function saveTeamMap(_prev, formData) {
   await requireAdmin();
-  for (const [key, raw] of formData.entries()) {
-    if (!key.startsWith('team_')) continue;
-    check(
-      await db()
-        .from('members')
-        .update({ external_team_id: String(raw) || null })
-        .eq('id', Number(key.slice(5)))
-    );
+  try {
+    const teams = await fetchTeams(await getSettings());
+    const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
+    for (const [key, raw] of formData.entries()) {
+      if (!key.startsWith('team_')) continue;
+      const t = byId[String(raw)];
+      check(
+        await db()
+          .from('members')
+          .update(
+            t
+              ? { external_team_id: t.id, team_name: t.name, team_abbr: t.abbrev, team_logo: t.logo, team_owner: t.owners.join(', ') || null }
+              : { external_team_id: null, team_name: null, team_abbr: null, team_logo: null, team_owner: null }
+          )
+          .eq('id', Number(key.slice(5)))
+      );
+    }
+    refresh();
+    return { ok: 'Team matches saved.' };
+  } catch (e) {
+    return { error: `Couldn't save: ${e.message}` };
   }
-  refresh();
 }
 
 export async function resetPin(formData) {

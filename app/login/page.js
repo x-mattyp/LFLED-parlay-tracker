@@ -10,7 +10,7 @@ export default async function LoginPage() {
     <div className="login">
       <h1>Who&rsquo;s picking?</h1>
       <p className="muted">First time in? You&rsquo;ll set a 4-digit PIN.</p>
-      <LoginForm names={members.map((m) => m.name)} />
+      <LoginForm people={members.map((m) => ({ name: m.name, team: m.team_name }))} />
     </div>
   );
 }

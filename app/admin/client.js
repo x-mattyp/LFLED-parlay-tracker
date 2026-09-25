@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { syncScores, saveSettings, loadTeams, saveTeamMap } from '../actions';
+import { syncScores, saveSettings, loadTeams, saveTeamMap, refreshTeams, commishPick } from '../actions';
 
 function Msg({ state }) {
   if (!state) return null;
@@ -45,42 +45,138 @@ export function SettingsForm({ settings }) {
   );
 }
 
-export function TeamMap({ members, platform }) {
-  const [teams, setTeams] = useState(null);
-  const [error, setError] = useState(null);
+// Teams link to people automatically from the league's owner names.
+// The manual picker is tucked away for the rare wrong match.
+export function TeamLinks({ members, platform }) {
+  const [state, setState] = useState(null);
   const [pending, start] = useTransition();
-  if (platform === 'manual') return <p className="muted small">Pick a platform in league settings first.</p>;
+  const [teams, setTeams] = useState(null);
+  const [saveState, saveAction, saving] = useActionState(saveTeamMap, null);
+  if (platform === 'manual') return <p className="muted small">Choose ESPN or Sleeper in league settings to link teams.</p>;
 
-  const load = () => start(async () => {
+  const relink = () => start(async () => setState(await refreshTeams()));
+  const openFix = () => start(async () => {
     const res = await loadTeams();
-    setError(res.error || null);
-    setTeams(res.teams || null);
+    if (res.error) setState({ error: res.error });
+    else setTeams(res.teams);
   });
-
-  if (!teams) {
-    return (
-      <div className="panel">
-        <p className="muted small">Match each person to their fantasy team so synced scores land on the right name.</p>
-        <button className="ghost" onClick={load} disabled={pending}>{pending ? 'Loading teams…' : 'Load league teams'}</button>
-        {error && <p className="msg err" role="alert">{error}</p>}
-      </div>
-    );
-  }
+  const unlinked = members.filter((m) => !m.external_team_id);
 
   return (
-    <form action={saveTeamMap} className="panel">
-      <div className="formgrid">
+    <div className="panel">
+      <p className="muted small">
+        Everyone is linked to their team automatically from the owner names on {platform === 'espn' ? 'ESPN' : 'Sleeper'}, and
+        team names refresh every morning.
+      </p>
+      <ul className="teamlist">
         {members.map((m) => (
-          <label key={m.id}>
-            {m.name}
-            <select name={`team_${m.id}`} defaultValue={m.external_team_id || ''}>
-              <option value="">Not matched</option>
-              {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </label>
+          <li key={m.id}>
+            {m.team_logo ? <img src={m.team_logo} alt="" width="28" height="28" /> : <span className="logo-blank" aria-hidden="true" />}
+            <span>
+              <b>{m.team_name || 'Not linked yet'}</b>
+              <span className="muted small"> {m.name}{m.team_owner ? ` (${m.team_owner})` : ''}</span>
+            </span>
+          </li>
         ))}
+      </ul>
+      <div className="inline">
+        <button className={unlinked.length ? '' : 'ghost'} onClick={relink} disabled={pending}>
+          {pending ? 'Linking…' : unlinked.length ? 'Link teams from the league' : 'Refresh teams now'}
+        </button>
       </div>
-      <button>Save team matches</button>
+      <Msg state={state} />
+      {!teams ? (
+        <p className="small">
+          <button className="linkish" onClick={openFix} disabled={pending}>Wrong match? Fix it by hand</button>
+        </p>
+      ) : (
+        <form action={saveAction} className="panel" style={{ padding: 0 }}>
+          <div className="formgrid">
+            {members.map((m) => (
+              <label key={m.id}>
+                {m.name}
+                <select name={`team_${m.id}`} defaultValue={m.external_team_id || ''}>
+                  <option value="">Not linked</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}{t.owners?.length ? ` (${t.owners.join(', ')})` : ''}</option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          <button disabled={saving}>{saving ? 'Saving…' : 'Save team matches'}</button>
+          <Msg state={saveState} />
+        </form>
+      )}
+    </div>
+  );
+}
+
+// Place or remove a pick on someone's behalf. Games already taken by
+// someone else are disabled; the commissioner isn't held to kickoff locks.
+export function CommishPickForm({ weekId, members, games, picks }) {
+  const [state, action, pending] = useActionState(commishPick, null);
+  const [memberId, setMemberId] = useState('');
+  const holderOf = Object.fromEntries(picks.map((p) => [p.event_id, p.member_id]));
+  const labelOf = Object.fromEntries(members.map((m) => [m.id, m.team_name || m.name]));
+  const current = picks.find((p) => String(p.member_id) === memberId);
+
+  return (
+    <form action={action} className="panel" key={state?.ok || 'form'}>
+      <input type="hidden" name="week_id" value={weekId} />
+      <p className="muted small">
+        Enter a pick someone sent you. It works even after kickoff or when picks are locked, but a game someone else already
+        has stays off limits.
+      </p>
+      <label>
+        Pick for
+        <select name="member_id" value={memberId} onChange={(e) => setMemberId(e.target.value)} required>
+          <option value="" disabled>Choose a team</option>
+          {members.map((m) => {
+            const has = picks.some((p) => p.member_id === m.id);
+            return <option key={m.id} value={m.id}>{labelOf[m.id]} ({m.name}){has ? ' · has a pick' : ''}</option>;
+          })}
+        </select>
+      </label>
+      {current && (
+        <p className="small">
+          Current pick: <b>{current.team_name ? `${current.team_name} ML` : current.bet}</b>. Saving a new one replaces it.
+        </p>
+      )}
+      <label>
+        Team to win
+        <select name="pick" defaultValue="" required>
+          <option value="" disabled>Choose a team</option>
+          {games.map((g) => {
+            const holder = holderOf[g.event_id];
+            const blocked = holder && String(holder) !== memberId;
+            const suffix = blocked ? ` · taken by ${labelOf[holder]}` : '';
+            return (
+              <optgroup key={g.event_id} label={`${g.away_abbr} @ ${g.home_abbr}${suffix}`}>
+                <option value={`${g.event_id}:${g.away_id}`} disabled={blocked}>
+                  {g.away_name}{g.away_ml ? ` (${g.away_ml})` : ''}
+                </option>
+                <option value={`${g.event_id}:${g.home_id}`} disabled={blocked}>
+                  {g.home_name}{g.home_ml ? ` (${g.home_ml})` : ''}
+                </option>
+              </optgroup>
+            );
+          })}
+        </select>
+      </label>
+      <label>
+        Their reason (optional)
+        <textarea name="rationale" rows={2} maxLength={280} placeholder="What they told you" />
+      </label>
+      <div className="inline">
+        <button disabled={pending || !memberId}>{pending ? 'Saving…' : 'Save pick'}</button>
+        {current && (
+          <button className="ghost" name="intent" value="clear" formNoValidate disabled={pending}>
+            Remove their pick
+          </button>
+        )}
+      </div>
+      <Msg state={state} />
     </form>
   );
 }

@@ -11,7 +11,7 @@ Weekly parlay pool for the league. Everyone logs in with their name and a 4-digi
 
 ### 1. Supabase
 1. Create a new project at supabase.com.
-2. Open **SQL Editor**, paste in all of `supabase/schema.sql`, and click **Run**. This creates the tables and seeds all 14 names, with Matty as commissioner. Then do the same with `supabase/migrate-002-matchups.sql`.
+2. Open **SQL Editor**, paste in all of `supabase/schema.sql`, and click **Run**. This creates the tables and seeds all 14 names, with Matty as commissioner. Then do the same with `supabase/migrate-002-matchups.sql` and `supabase/migrate-003-team-names.sql`.
 3. Go to **Project Settings → API** and copy the **Project URL** and the **service_role** key. Use the service_role key, not the anon key.
 
 ### 2. GitHub and Vercel
@@ -41,12 +41,17 @@ ESPN only shares a private league's data with a logged-in browser. To get the tw
 
 These cookies expire every so often. If syncing starts failing with a 401, grab fresh ones.
 
+## Teams
+Each person is linked to their fantasy team automatically from the owner names on ESPN or Sleeper, and the app shows team names everywhere. Links and names refresh every morning and whenever scores are pulled. If a link is ever wrong, fix it under **Commish → Teams → Wrong match?**
+
 ## How picks work
 - **Weeks 1–2:** the commissioner types in each person's pick and result on the Commish page.
 - **Week 3 on:** each person taps a team from that week's NFL slate to win straight up (moneyline) and writes a short reason, which everyone can see. Once a game is taken, both teams in it are off the board. Picks lock at kickoff, and results grade themselves when the game goes final.
 
 ## Weekly routine
 Nothing, most weeks. Every morning at 8am ET the app moves to the current NFL week, refreshes the slate, grades finished games, and pulls fantasy scores for this week and last. The low scorer is flagged as next week's buyer once last week is final. Game results also refresh any time someone opens the page.
+
+The commissioner can also place or remove a pick for anyone under **Commish → Place a pick for someone**, even after kickoff.
 
 Optional: enter the stake, odds, and payout on the parlay ticket, and override a result if a game is postponed or cancelled.
 

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/session';
 import { getSettings, getWeekBundle } from '@/lib/data';
 import { gradePick, toggleLock, saveParlay, saveScores, advanceWeek, resetPin, saveLegacyPicks } from '../actions';
-import { SyncButton, SettingsForm, TeamMap } from './client';
+import { SyncButton, SettingsForm, TeamLinks, CommishPickForm } from './client';
+import { getGames } from '@/lib/games';
 
 const RESULTS = ['win', 'loss', 'push', 'pending'];
 const LABEL = { win: 'Win', loss: 'Loss', push: 'Push', pending: 'Pending' };
@@ -12,11 +13,13 @@ export default async function AdminPage({ searchParams }) {
   const settings = await getSettings();
   const sp = await searchParams;
   const n = Math.min(Math.max(Number(sp.week) || settings.current_week, 1), settings.current_week);
+  const legacyWeek = n < settings.ml_start_week;
+  const games = legacyWeek ? [] : await getGames(settings.season, n);
   const { week, members, scores, picks } = await getWeekBundle(settings.season, n);
   const scoreOf = Object.fromEntries(scores.map((s) => [s.member_id, s]));
-  const nameOf = Object.fromEntries(members.map((m) => [m.id, m.name]));
+  const nameOf = Object.fromEntries(members.map((m) => [m.id, m.team_name || m.name]));
   const pickOf = Object.fromEntries(picks.map((p) => [p.member_id, p]));
-  const legacy = n < settings.ml_start_week;
+  const legacy = legacyWeek;
 
   return (
     <>
@@ -43,7 +46,7 @@ export default async function AdminPage({ searchParams }) {
               const p = pickOf[m.id];
               return (
                 <li key={m.id}>
-                  <b>{m.name}</b>
+                  <b>{m.team_name || m.name}</b>{m.team_name && <span className="muted small"> {m.name}</span>}
                   <div className="legacyrow">
                     <input name={`bet_${m.id}`} defaultValue={p?.bet || ''} placeholder="Bills -3.5" aria-label={`${m.name}'s pick`} />
                     <input name={`odds_${m.id}`} defaultValue={p?.odds || ''} placeholder="-110" aria-label={`${m.name}'s odds`} />
@@ -94,6 +97,17 @@ export default async function AdminPage({ searchParams }) {
         </div>
       )}
 
+      {!legacy && (
+        <>
+          <h2>Place a pick for someone</h2>
+          {games.length ? (
+            <CommishPickForm weekId={week.id} members={members} games={games} picks={picks} />
+          ) : (
+            <p className="muted">This week&rsquo;s games haven&rsquo;t loaded yet.</p>
+          )}
+        </>
+      )}
+
       <h2>Parlay ticket</h2>
       <form action={saveParlay} className="panel">
         <input type="hidden" name="week_id" value={week.id} />
@@ -114,7 +128,7 @@ export default async function AdminPage({ searchParams }) {
           <div className="formgrid">
             {members.map((m) => (
               <label key={m.id}>
-                {m.name}{scoreOf[m.id]?.source && scoreOf[m.id].source !== 'manual' ? ` (${scoreOf[m.id].source})` : ''}
+                {m.team_name || m.name}{scoreOf[m.id]?.source && scoreOf[m.id].source !== 'manual' ? ` (${scoreOf[m.id].source})` : ''}
                 <input name={`score_${m.id}`} inputMode="decimal" defaultValue={scoreOf[m.id]?.points ?? ''} />
               </label>
             ))}
@@ -136,8 +150,8 @@ export default async function AdminPage({ searchParams }) {
       <h2>League settings</h2>
       <SettingsForm settings={settings} />
 
-      <h2>Team matching</h2>
-      <TeamMap members={members} platform={settings.platform} />
+      <h2>Teams</h2>
+      <TeamLinks members={members} platform={settings.platform} />
 
       <h2>PINs</h2>
       <div className="panel">
@@ -145,7 +159,7 @@ export default async function AdminPage({ searchParams }) {
         <ul className="gradelist">
           {members.map((m) => (
             <li key={m.id} className="inline" style={{ justifyContent: 'space-between' }}>
-              <span>{m.name} <span className="muted small">{m.has_pin ? 'PIN set' : 'No PIN yet'}</span></span>
+              <span>{m.name}{m.team_name ? <span className="muted small"> {m.team_name}</span> : null} <span className="muted small">· {m.has_pin ? 'PIN set' : 'No PIN yet'}</span></span>
               {m.has_pin && (
                 <form action={resetPin}>
                   <input type="hidden" name="member_id" value={m.id} />
