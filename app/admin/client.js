@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from 'react';
 import TeamLogo from '../teamlogo';
-import { syncScores, saveSettings, loadTeams, saveTeamMap, refreshTeams, commishPick } from '../actions';
+import { syncScores, saveSettings, loadTeams, saveTeamMap, refreshTeams, commishPick, uploadLogo, restoreEspnLogo } from '../actions';
 
 function Msg({ state }) {
   if (!state) return null;
@@ -66,23 +66,24 @@ export function TeamLinks({ members, platform }) {
   return (
     <div className="panel">
       <p className="muted small">
-        Everyone is linked to their team automatically from the owner names on {platform === 'espn' ? 'ESPN' : 'Sleeper'}, and
-        team names refresh every morning.
+        Everyone is linked to their team automatically from the owner names on {platform === 'espn' ? 'ESPN' : 'Sleeper'}.
+        Team names and logos refresh every morning, and each logo is saved here so it always shows.
       </p>
       <ul className="teamlist">
         {members.map((m) => (
           <li key={m.id}>
-            <TeamLogo member={m} size={28} className="logo-small" />
+            <TeamLogo member={m} size={40} className="logo-small" />
             <span>
               <b>{m.team_name || 'Not linked yet'}</b>
               <span className="muted small"> {m.name}{m.team_owner ? ` (${m.team_owner})` : ''}</span>
+              <LogoStatus member={m} />
             </span>
           </li>
         ))}
       </ul>
       <div className="inline">
         <button className={unlinked.length ? '' : 'ghost'} onClick={relink} disabled={pending}>
-          {pending ? 'Linking…' : unlinked.length ? 'Link teams from the league' : 'Refresh teams now'}
+          {pending ? 'Working…' : unlinked.length ? 'Link teams from the league' : 'Refresh teams and save logos'}
         </button>
       </div>
       <Msg state={state} />
@@ -110,6 +111,41 @@ export function TeamLinks({ members, platform }) {
         </form>
       )}
     </div>
+  );
+}
+
+function LogoStatus({ member: m }) {
+  const [state, action, pending] = useActionState(uploadLogo, null);
+  const [open, setOpen] = useState(false);
+  const status =
+    m.logo_source === 'upload' ? 'Uploaded photo'
+      : m.logo_url ? 'Saved from ESPN'
+        : m.logo_error ? `No logo yet: ${m.logo_error}`
+          : m.team_logo ? 'Not saved yet' : 'No logo on ESPN';
+  const needsOne = !m.logo_url;
+  return (
+    <span className="logostatus">
+      <span className={`small ${needsOne ? 'warn' : 'muted'}`}>{status}</span>{' '}
+      <button type="button" className="linkish small" onClick={() => setOpen((v) => !v)}>
+        {open ? 'Close' : m.logo_url ? 'Change photo' : 'Upload photo'}
+      </button>
+      {open && (
+        <span className="logoform">
+          <form action={action} className="inline">
+            <input type="hidden" name="member_id" value={m.id} />
+            <input type="file" name="photo" accept="image/*" required aria-label={`Photo for ${m.team_name || m.name}`} />
+            <button className="ghost" disabled={pending}>{pending ? 'Saving…' : 'Save photo'}</button>
+          </form>
+          {m.logo_source === 'upload' && m.team_logo && (
+            <form action={restoreEspnLogo}>
+              <input type="hidden" name="member_id" value={m.id} />
+              <button className="linkish small">Use ESPN logo instead</button>
+            </form>
+          )}
+          <Msg state={state} />
+        </span>
+      )}
+    </span>
   );
 }
 

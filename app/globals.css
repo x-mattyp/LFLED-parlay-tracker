@@ -314,3 +314,9 @@ optgroup { font-weight: 600; }
   .pickmodal[open] { animation: rise 180ms ease-out; }
   @keyframes rise { from { transform: translateY(12px); opacity: 0; } }
 }
+.teamlist li { grid-template-columns: 40px 1fr; align-items: start; }
+.teamlist .logo-small { width: 40px; height: 40px; }
+.logostatus { display: block; margin-top: 2px; }
+.logostatus .warn { color: var(--loss); }
+.logoform { display: grid; gap: 6px; margin-top: 6px; }
+.logoform input[type='file'] { padding: 6px; font-size: 0.9rem; max-width: 100%; }

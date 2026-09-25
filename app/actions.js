@@ -9,6 +9,7 @@ import { getSettings, getOrCreateWeek } from '@/lib/data';
 import { hasStarted } from '@/lib/games';
 import { fetchTeams } from '@/lib/providers';
 import { syncWeek, linkTeams } from '@/lib/sync';
+import { storeLogo, mirrorLogos, LOGO_MAX_BYTES } from '@/lib/logos';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
@@ -316,11 +317,20 @@ export async function saveSettings(_prev, formData) {
 export async function refreshTeams() {
   await requireAdmin();
   try {
-    const { linked, missing } = await linkTeams(await getSettings());
+    const { linked, missing, logos } = await linkTeams(await getSettings());
     refresh();
+    const pics = logos?.error
+      ? ` Couldn't save logos: ${logos.error}`
+      : logos?.failed
+        ? ` ${logos.failed} logo${logos.failed === 1 ? '' : 's'} couldn't be saved from ESPN; upload those below.`
+        : logos?.saved
+          ? ` Saved ${logos.saved} logo${logos.saved === 1 ? '' : 's'}.`
+          : '';
     return missing.length
-      ? { error: `Linked ${linked} teams. Couldn't find a team for ${missing.join(', ')}. Fix it below.` }
-      : { ok: `All ${linked} teams linked.` };
+      ? { error: `Linked ${linked} teams. Couldn't find a team for ${missing.join(', ')}. Fix it below.${pics}` }
+      : logos?.failed || logos?.error
+        ? { error: `All ${linked} teams linked.${pics}` }
+        : { ok: `All ${linked} teams linked.${pics}` };
   } catch (e) {
     return { error: `Couldn't reach the league: ${e.message}` };
   }
@@ -360,6 +370,37 @@ export async function saveTeamMap(_prev, formData) {
   } catch (e) {
     return { error: `Couldn't save: ${e.message}` };
   }
+}
+
+// Commish uploads a photo for a team. It replaces the ESPN logo until
+// "Use ESPN logo" is clicked.
+export async function uploadLogo(_prev, formData) {
+  await requireAdmin();
+  const memberId = Number(formData.get('member_id'));
+  const file = formData.get('photo');
+  if (!file || typeof file === 'string' || !file.size) return { error: 'Choose a photo first.' };
+  if (!String(file.type).startsWith('image/')) return { error: 'That file isn\'t an image.' };
+  if (file.size > LOGO_MAX_BYTES) return { error: 'That photo is over 4 MB. Try a smaller one or a screenshot of it.' };
+  try {
+    const url = await storeLogo(memberId, Buffer.from(await file.arrayBuffer()), file.type);
+    check(await db().from('members').update({ logo_url: url, logo_source: 'upload', logo_error: null }).eq('id', memberId));
+    refresh();
+    return { ok: 'Photo saved.' };
+  } catch (e) {
+    return { error: `Couldn't save the photo: ${e.message}` };
+  }
+}
+
+// Go back to the team's ESPN logo (re-downloads it).
+export async function restoreEspnLogo(formData) {
+  await requireAdmin();
+  check(
+    await db().from('members')
+      .update({ logo_source: null, logo_url: null, logo_src_seen: null, logo_error: null })
+      .eq('id', Number(formData.get('member_id')))
+  );
+  try { await mirrorLogos(); } catch {}
+  refresh();
 }
 
 export async function resetPin(formData) {
