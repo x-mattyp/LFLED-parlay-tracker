@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<title>LFLED</title>
+<circle cx="256" cy="256" r="254" fill="#141414"/>
+<circle cx="256" cy="256" r="240" fill="#135a37"/>
+<circle cx="256" cy="256" r="212" fill="#f3ecd9" stroke="#141414" stroke-width="10"/>
+<clipPath id="ic"><circle cx="256" cy="256" r="207"/></clipPath>
+<g clip-path="url(#ic)"><g transform="translate(256 262) scale(1.42) translate(-268 -236)" stroke="#141414" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+  <!-- sunburst -->
+  <g stroke="none" fill="#e8dfc6">
+    <path d="M256 250 L556.0 250.0 L550.2 308.5Z"/><path d="M256 250 L533.2 364.8 L505.4 416.7Z"/><path d="M256 250 L468.1 462.1 L422.7 499.4Z"/><path d="M256 250 L370.8 527.2 L314.5 544.2Z"/><path d="M256 250 L256.0 550.0 L197.5 544.2Z"/><path d="M256 250 L141.2 527.2 L89.3 499.4Z"/><path d="M256 250 L43.9 462.1 L6.6 416.7Z"/><path d="M256 250 L-21.2 364.8 L-38.2 308.5Z"/><path d="M256 250 L-44.0 250.0 L-38.2 191.5Z"/><path d="M256 250 L-21.2 135.2 L6.6 83.3Z"/><path d="M256 250 L43.9 37.9 L89.3 0.6Z"/><path d="M256 250 L141.2 -27.2 L197.5 -44.2Z"/><path d="M256 250 L256.0 -50.0 L314.5 -44.2Z"/><path d="M256 250 L370.8 -27.2 L422.7 0.6Z"/><path d="M256 250 L468.1 37.9 L505.4 83.3Z"/><path d="M256 250 L533.2 135.2 L550.2 191.5Z"/>
+  </g>
+  <!-- tall boy -->
+  <g transform="rotate(-14 128 262)">
+    <rect x="104" y="208" width="48" height="96" rx="7" fill="#e3b23c"/>
+    <rect x="104" y="238" width="48" height="36" fill="#135a37" stroke="none"/>
+    <rect x="104" y="208" width="48" height="96" rx="7" fill="none"/>
+    <path d="M110 208 q18 -16 36 0" fill="#fff"/>
+    <path d="M104 240 H152 M104 272 H152" stroke-width="3"/>
+  </g>
+  <g transform="translate(-4 14)">
+  <!-- shirt + clerical collar -->
+  <path d="M120 430 C128 352 170 318 206 312 L262 312 C300 322 340 360 356 430 Z" fill="#141414"/>
+  <path d="M176 306 C196 320 238 322 262 306 L266 326 C238 344 196 342 172 326 Z" fill="#141414" stroke="#141414"/>
+  <rect x="218" y="318" width="20" height="18" rx="2" fill="#fff" stroke="#141414" stroke-width="3"/>
+  <!-- head -->
+  <path d="M176 318 C168 290 164 252 170 222 C176 186 194 160 222 150 C246 142 268 148 284 162
+           C312 182 346 198 374 206 C388 210 392 224 380 230 C352 238 322 240 296 238
+           C276 242 262 254 256 272 C250 290 250 304 252 316 Z" fill="#a7adb2"/>
+  <path d="M252 316 C250 300 252 286 256 272" fill="none" stroke-width="3"/>
+  <!-- ear (rose, folded back) -->
+  <path d="M214 160 C196 146 172 146 158 162 C170 168 188 176 204 190 Z" fill="#7c838a"/>
+  <!-- muzzle shading -->
+  <path d="M300 186 C330 198 356 206 374 208" fill="none" stroke="#7c838a" stroke-width="3"/>
+  <!-- nose + mouth -->
+  <ellipse cx="381" cy="215" rx="10" ry="8" fill="#141414"/>
+  <path d="M378 229 C356 236 330 238 306 236" fill="none" stroke-width="4"/>
+  <!-- half-lidded eye -->
+  <ellipse cx="268" cy="182" rx="11" ry="7" fill="#fff" stroke-width="3"/>
+  <circle cx="271" cy="184" r="4.5" fill="#141414" stroke="none"/>
+  <path d="M255 183 C260 172 278 172 282 183 Z" fill="#7c838a" stroke-width="4"/>
+  <path d="M257 192 C264 196 274 196 280 191" fill="none" stroke="#e7a3a3" stroke-width="3"/>
+  <!-- cigar -->
+  <g transform="rotate(26 324 236)">
+    <rect x="312" y="230" width="62" height="13" rx="5" fill="#7a3d1a"/>
+    <rect x="326" y="230" width="9" height="13" fill="#e3b23c" stroke-width="3"/>
+    <rect x="370" y="230" width="8" height="13" rx="3" fill="#d9892b" stroke-width="3"/>
+  </g>
+  <path d="M374 268 C394 262 398 246 412 238 C428 228 418 212 432 200" fill="none" stroke="#9c9c9c" stroke-width="4" opacity="0.8"/>
+  </g>
+  <!-- football halo -->
+  <g transform="rotate(-12 236 132) translate(0 22)">
+    <ellipse cx="236" cy="108" rx="62" ry="15" fill="none" stroke="#e3b23c" stroke-width="7"/>
+    <ellipse cx="236" cy="92" rx="34" ry="19" fill="#7a3d1a"/>
+    <path d="M214 92 H258 M222 86 V98 M230 86 V98 M238 86 V98 M246 86 V98" stroke="#fff" stroke-width="3"/>
+  </g>
+</g></g>
+<circle cx="256" cy="256" r="212" fill="none" stroke="#141414" stroke-width="10"/>
+</svg>

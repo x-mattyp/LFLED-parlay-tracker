@@ -42,7 +42,8 @@ a { color: inherit; }
   display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px;
   max-width: 760px; margin: 0 auto; padding: 18px 16px 6px;
 }
-.brand { font: 800 1.6rem/1 var(--display); text-decoration: none; letter-spacing: 0.01em; }
+.brand { font: 800 1.6rem/1 var(--display); text-decoration: none; letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
+.brand img { width: 44px; height: 44px; flex: none; }
 .masthead nav { display: flex; gap: 18px; align-items: baseline; font-weight: 500; }
 .masthead nav a { text-decoration: none; color: var(--muted); }
 .masthead nav a:hover { color: var(--ink); }
@@ -359,4 +360,12 @@ optgroup { font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) {
   .chiplive, .livebadge { animation: blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: 0.35; } }
+}
+
+.login-crest { display: block; width: min(220px, 60vw); height: auto; margin: 0 auto 6px; }
+.login h1 { text-align: center; }
+.login > p { text-align: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .login-crest { animation: settle 700ms cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes settle { from { transform: rotate(-14deg) scale(0.85); opacity: 0; } }
 }
