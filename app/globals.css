@@ -269,12 +269,26 @@ optgroup { font-weight: 600; }
 .ticket-nums div { margin: 0; }
 .ticket-nums dt { font-size: 0.78rem; color: var(--ticket-muted); }
 .ticket-nums dd { margin: 2px 0 0; font: 700 1.35rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
-.legdots { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 0 4px; }
-.legdots .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ticket-muted); }
-.legdots .dot.win { background: #1d7f48; border-color: #1d7f48; }
-.legdots .dot.loss { background: #c3352b; border-color: #c3352b; }
-.legdots .dot.push { background: #9aa3b4; border-color: #9aa3b4; }
-.legdots .dot.none { border-style: dashed; opacity: 0.45; }
+.legdots { list-style: none; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 0 6px; }
+.legchip {
+  position: relative; width: 38px; height: 38px; border-radius: 50%; background: #fff;
+  border: 2px solid var(--ticket-rule); display: grid; place-items: center;
+}
+.legchip img { width: 28px; height: 28px; object-fit: contain; }
+.legchip .chipabbr { font: 700 0.72rem/1 var(--display); color: var(--ticket-ink); text-transform: uppercase; }
+.legchip.none { background: transparent; border-style: dashed; opacity: 0.5; }
+.legchip.win { border-color: #1d7f48; }
+.legchip.loss { border-color: #c3352b; }
+.legchip.loss img, .legchip.loss .chipabbr { opacity: 0.45; filter: grayscale(1); }
+.legchip.push { border-color: #9aa3b4; }
+.chipmark {
+  position: absolute; right: -5px; bottom: -5px; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 0.72rem/1 var(--body); color: #fff; border: 2px solid var(--paper-ticket);
+}
+.legchip.win .chipmark { background: #1d7f48; }
+.legchip.loss .chipmark { background: #c3352b; }
+.legchip.push .chipmark { background: #9aa3b4; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .ticket-foot { display: grid; gap: 6px; padding-top: 12px; color: var(--ticket-muted); }
 .barcode {
   height: 30px; opacity: 0.85;
@@ -308,8 +322,7 @@ optgroup { font-weight: 600; }
     60% { transform: translate(-60px, -14px) rotate(-18deg) rotateX(900deg); }
     100% { transform: translate(0, 0) rotate(-18deg) rotateX(1080deg); }
   }
-  .legdots .dot { animation: pop 300ms ease-out both; }
-  .legdots .dot:nth-child(n) { animation-delay: calc(0.9s + var(--i, 0) * 40ms); }
+  .legchip { animation: pop 300ms ease-out both; animation-delay: calc(0.9s + var(--i, 0) * 40ms); }
   @keyframes pop { from { transform: scale(0); } }
   .pickmodal[open] { animation: rise 180ms ease-out; }
   @keyframes rise { from { transform: translateY(12px); opacity: 0; } }

@@ -127,12 +127,27 @@ export default async function WeekPage({ searchParams }) {
               <div><dt>{week.payout != null ? 'To win' : 'Est. to win'}</dt><dd>{winText}</dd></div>
               <div><dt>Picks in</dt><dd>{picks.length}/{members.length}</dd></div>
             </dl>
-            <div className="legdots" role="img" aria-label={`${counts.win} won, ${counts.loss} lost, ${counts.push} pushed, ${counts.pending} pending, ${members.length - picks.length} missing`}>
+            <ul className="legdots" aria-label={`${counts.win} won, ${counts.loss} lost, ${counts.push} pushed, ${counts.pending} pending, ${members.length - picks.length} missing`}>
               {legs.map((m, i) => {
                 const p = pickOf[m.id];
-                return <span key={m.id} style={{ '--i': i }} className={`dot ${p ? p.result : 'none'}`} title={`${m.team_name || m.name}: ${p ? LABEL[p.result] : 'No pick'}`} />;
+                const g = p?.event_id ? gameOf[p.event_id] : null;
+                const logo = g ? (p.team_id === g.home_id ? g.home_logo : g.away_logo) : null;
+                const who = m.team_name || m.name;
+                const what = p ? (p.team_name ? `${p.team_name} ML` : p.bet) : 'No pick yet';
+                const mark = p?.result === 'win' ? '✓' : p?.result === 'loss' ? '✕' : p?.result === 'push' ? '–' : null;
+                return (
+                  <li key={m.id} style={{ '--i': i }} className={`legchip ${p ? p.result : 'none'}`} title={`${who}: ${what}${p ? ` (${LABEL[p.result]})` : ''}`}>
+                    {logo ? (
+                      <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
+                    ) : (
+                      <span className="chipabbr">{p ? (p.team_abbr || p.bet || '?').slice(0, 3) : ''}</span>
+                    )}
+                    {mark && <span className="chipmark" aria-hidden="true">{mark}</span>}
+                    <span className="sr-only">{who}: {what}{p ? `, ${LABEL[p.result]}` : ''}</span>
+                  </li>
+                );
               })}
-            </div>
+            </ul>
             <div className="ticket-foot">
               <span className="barcode" aria-hidden="true" />
               <span className="small">
