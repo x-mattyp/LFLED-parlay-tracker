@@ -333,3 +333,5 @@ optgroup { font-weight: 600; }
 .logostatus .warn { color: var(--loss); }
 .logoform { display: grid; gap: 6px; margin-top: 6px; }
 .logoform input[type='file'] { padding: 6px; font-size: 0.9rem; max-width: 100%; }
+
+.ticket-nums .share dd { color: #1d7f48; }

@@ -100,6 +100,8 @@ export default async function WeekPage({ searchParams }) {
         const counts = { win: 0, loss: 0, push: 0, pending: 0 };
         for (const p of picks) counts[p.result] += 1;
         const oddsText = week.odds || est?.american || '—';
+        const toWin = week.payout != null ? Number(week.payout) : est?.toWin ?? null;
+        const share = toWin != null && picks.length ? (Number(stake) + toWin) / picks.length : null;
         const winText = money(week.payout ?? est?.toWin);
         const estimated = !week.odds || week.payout == null;
         const ticketEl = (
@@ -117,7 +119,7 @@ export default async function WeekPage({ searchParams }) {
             </div>
             <div className="ticket-title">
               <div>
-                <p className="kicker">Week {n} · {picks.length}-leg parlay</p>
+                <p className="kicker">Week {n} · {picks.length}-leg parlay{picks.length < members.length ? ` · ${picks.length} of ${members.length} picks in` : ''}</p>
                 <p className="odds">{oddsText}</p>
               </div>
               <span className={`stamp big ${status}`}>{LABEL[status]}</span>
@@ -125,12 +127,15 @@ export default async function WeekPage({ searchParams }) {
             <dl className="ticket-nums">
               <div><dt>Stake</dt><dd>{money(stake)}</dd></div>
               <div><dt>{week.payout != null ? 'To win' : 'Est. to win'}</dt><dd>{winText}</dd></div>
-              <div><dt>Picks in</dt><dd>{picks.length}/{members.length}</dd></div>
+              <div className="share">
+                <dt>{myPick ? 'Your share' : 'Each pick gets'}</dt>
+                <dd>{money(share)}</dd>
+              </div>
             </dl>
             <ul className="legdots" aria-label={`${counts.win} won, ${counts.loss} lost, ${counts.push} pushed, ${counts.pending} pending, ${members.length - picks.length} missing`}>
               {legs.map((m, i) => {
                 const p = pickOf[m.id];
-                const g = p?.event_id ? gameOf[p.event_id] : null;
+                const g = matchupWeek && p?.event_id ? gameOf[p.event_id] : null;
                 const logo = g ? (p.team_id === g.home_id ? g.home_logo : g.away_logo) : null;
                 const who = m.team_name || m.name;
                 const what = p ? (p.team_name ? `${p.team_name} ML` : p.bet) : 'No pick yet';
@@ -140,7 +145,7 @@ export default async function WeekPage({ searchParams }) {
                     {logo ? (
                       <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
                     ) : (
-                      <span className="chipabbr">{p ? (p.team_abbr || p.bet || '?').slice(0, 3) : ''}</span>
+                      <span className="chipabbr">{p ? (matchupWeek ? (p.team_abbr || '?').slice(0, 3) : { win: 'W', loss: 'L', push: 'P', pending: '•' }[p.result]) : ''}</span>
                     )}
                     {mark && <span className="chipmark" aria-hidden="true">{mark}</span>}
                     <span className="sr-only">{who}: {what}{p ? `, ${LABEL[p.result]}` : ''}</span>
@@ -151,6 +156,7 @@ export default async function WeekPage({ searchParams }) {
             <div className="ticket-foot">
               <span className="barcode" aria-hidden="true" />
               <span className="small">
+                {share != null ? `Payout of ${money(Number(stake) + toWin)} split ${picks.length} ways. ` : ''}
                 {estimated ? 'Estimated from everyone\u2019s odds' : 'Bet placed'}
                 {estimated && est?.unpriced > 0 ? ` · ${est.unpriced} leg${est.unpriced === 1 ? '' : 's'} without odds left out` : ''}
                 {week.locked ? ' · Picks locked' : ''}
