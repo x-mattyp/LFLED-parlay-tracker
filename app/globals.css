@@ -524,6 +524,10 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 
 /* Name label when you hover (or tap) a team photo */
 .tipwrap { position: relative; display: inline-grid; outline: none; cursor: default; }
+/* keep the label above the neighbouring logos (their pop-in animation stacks them on top otherwise) */
+.legcell, .sb-side, .pk-faces li { position: relative; }
+.legcell:hover, .legcell:focus-within { z-index: 30; }
+.legcell { animation-fill-mode: backwards !important; }
 .tip {
   position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 4px);
   display: grid; gap: 1px; min-width: max-content; max-width: 220px; text-align: center;
