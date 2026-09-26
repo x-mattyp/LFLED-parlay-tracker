@@ -78,18 +78,35 @@ function Row({ row, weekId, meId, isAdmin, people }) {
             {p ? p.text : 'No pick yet'}
           </span>
           {p?.live && <span className={`pk-live ${p.live.state}`}>{p.live.text} · {p.live.clock}</span>}
-          {p && (votes.rides.length > 0 || votes.fades.length > 0 || row.comments.length > 0) && (
-            <span className="pk-tally">
-              {votes.rides.length > 0 && <span className="t-ride">{votes.rides.length} riding</span>}
-              {votes.fades.length > 0 && <span className="t-fade">{votes.fades.length} fading</span>}
-              {row.comments.length > 0 && <span className="t-com">{row.comments.length} comment{row.comments.length === 1 ? '' : 's'}</span>}
-            </span>
-          )}
         </span>
         <span className="pk-side">
           {p && <span className={`stamp ${p.result}`}>{STAMP[p.result]}</span>}
         </span>
       </button>
+
+      {p && (
+        <div className="pk-quick">
+          {mine ? (
+            <span className="pk-mine small">
+              {votes.rides.length > 0 && <span className="t-ride">{votes.rides.length} riding</span>}
+              {votes.fades.length > 0 && <span className="t-fade">{votes.fades.length} fading</span>}
+              {!votes.rides.length && !votes.fades.length && <span className="muted">No rides or fades yet</span>}
+            </span>
+          ) : (
+            <>
+              <button type="button" className={`qv ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
+                Ride{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
+              </button>
+              <button type="button" className={`qv fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
+                Fade{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
+              </button>
+            </>
+          )}
+          <button type="button" className={`qv talk${open ? ' on' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            💬{row.comments.length > 0 ? <b>{row.comments.length}</b> : <span className="qv-label">Comment</span>}
+          </button>
+        </div>
+      )}
 
       {p?.rationale && !open && (
         <span className="pk-pop" role="tooltip">
@@ -102,20 +119,6 @@ function Row({ row, weekId, meId, isAdmin, people }) {
         <div className="pk-panel">
           {p.rationale && <q className="pk-why">{p.rationale}</q>}
 
-          <div className="pk-votes">
-            {mine ? (
-              <p className="muted small">Your pick. Everyone else can ride or fade it.</p>
-            ) : (
-              <>
-                <button type="button" className={`vote ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
-                  Ride {votes.rides.length > 0 && <b>{votes.rides.length}</b>}
-                </button>
-                <button type="button" className={`vote fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
-                  Fade {votes.fades.length > 0 && <b>{votes.fades.length}</b>}
-                </button>
-              </>
-            )}
-          </div>
           {(votes.rides.length > 0 || votes.fades.length > 0) && (
             <div className="pk-who">
               {votes.rides.length > 0 && <span><span className="t-ride">Riding</span> <Faces ids={votes.rides} people={people} /></span>}
