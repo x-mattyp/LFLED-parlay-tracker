@@ -323,7 +323,7 @@ optgroup { font-weight: 600; }
     60% { transform: translate(-60px, -14px) rotate(-18deg) rotateX(900deg); }
     100% { transform: translate(0, 0) rotate(-18deg) rotateX(1080deg); }
   }
-  .legchip { animation: pop 300ms ease-out both; animation-delay: calc(0.9s + var(--i, 0) * 40ms); }
+  .legcell { animation: pop 300ms ease-out both; animation-delay: calc(0.9s + var(--i, 0) * 40ms); }
   @keyframes pop { from { transform: scale(0); } }
   .pickmodal[open] { animation: rise 180ms ease-out; }
   @keyframes rise { from { transform: translateY(12px); opacity: 0; } }
@@ -423,3 +423,10 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .masthead nav a, .masthead nav button { white-space: nowrap; }
 @media (max-width: 420px) { .masthead nav { font-size: 0.9rem; gap: 6px 11px; } }
 .masthead nav button.linkish { font-size: inherit; }
+
+/* Who picked each leg, under the NFL logo */
+.legdots { gap: 10px 8px; }
+.legcell { display: grid; justify-items: center; gap: 8px; }
+.legowner { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; display: block; background: #e8e3d6; box-shadow: 0 0 0 1.5px var(--paper-ticket), 0 0 0 2.5px var(--ticket-rule); }
+.legowner.blank { display: grid; place-items: center; font: 700 0.55rem/1 var(--display); color: var(--ticket-muted); text-transform: uppercase; }
+.legcell.me .legowner { box-shadow: 0 0 0 1.5px var(--paper-ticket), 0 0 0 3px var(--gold, #e3b23c); }

@@ -172,7 +172,8 @@ export default async function WeekPage({ searchParams }) {
                 const l = liveOf(p);
                 const tip = l ? `${l.text} · ${l.clock}` : p ? LABEL[p.result] : '';
                 return (
-                  <li key={m.id} style={{ '--i': i }} className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`} title={`${who}: ${what}${tip ? ` (${tip})` : ''}`}>
+                  <li key={m.id} style={{ '--i': i }} className={`legcell${m.id === me.id ? ' me' : ''}`} title={`${who}: ${what}${tip ? ` (${tip})` : ''}`}>
+                   <span className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`}>
                     {logo ? (
                       <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
                     ) : (
@@ -180,6 +181,8 @@ export default async function WeekPage({ searchParams }) {
                     )}
                     {mark && <span className="chipmark" aria-hidden="true">{mark}</span>}
                     {l && <span className="chiplive" aria-hidden="true" />}
+                   </span>
+                    <TeamLogo member={m} size={22} className="legowner" />
                     <span className="sr-only">{who}: {what}{tip ? `, ${tip}` : ''}</span>
                   </li>
                 );
