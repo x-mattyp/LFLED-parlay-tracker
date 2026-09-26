@@ -11,8 +11,12 @@ function Faces({ ids, people, max = 5 }) {
   return (
     <span className="faces">
       {ids.slice(0, max).map((id) => (
-        <span key={id} className="face" title={people[id]?.team_name || people[id]?.name}>
+        <span key={id} className="face tipwrap" tabIndex={0}>
           <TeamLogo member={people[id] || { id, name: '?' }} size={20} className="face-logo" />
+          <span className="tip" role="tooltip">
+            <b>{people[id]?.team_name || people[id]?.name || 'Someone'}</b>
+            {people[id]?.team_name && <span>{people[id].name}</span>}
+          </span>
         </span>
       ))}
       {ids.length > max && <span className="face-more">+{ids.length - max}</span>}

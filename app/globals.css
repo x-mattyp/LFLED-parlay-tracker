@@ -521,3 +521,18 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .qv-label { font-weight: 600; }
 .pk-mine { display: flex; gap: 10px; font-weight: 600; }
 .pk-row.open .pk-quick { padding-bottom: 12px; }
+
+/* Name label when you hover (or tap) a team photo */
+.tipwrap { position: relative; display: inline-grid; outline: none; cursor: default; }
+.tip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 4px);
+  display: grid; gap: 1px; min-width: max-content; max-width: 220px; text-align: center;
+  background: #16213a; color: #fbfaf6; border-radius: 7px; padding: 6px 10px; font: 400 0.78rem/1.25 var(--body);
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,.55); opacity: 0; pointer-events: none; z-index: 20;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.tip b { font-weight: 700; font-size: 0.82rem; white-space: normal; }
+.tip span { color: #c9ced8; }
+.tip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: #16213a; }
+.tipwrap:hover .tip, .tipwrap:focus .tip, .tipwrap:focus-within .tip { opacity: 1; transform: translate(-50%, 0); }
+.tipwrap:focus-visible .legowner, .tipwrap:focus-visible .picker-logo, .tipwrap:focus-visible .face-logo { outline: 2px solid var(--focus); outline-offset: 2px; }

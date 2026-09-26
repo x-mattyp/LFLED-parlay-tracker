@@ -23,8 +23,12 @@ function TeamRow({ t, g, picks, meId }) {
       </span>
       <span className="sb-pickers">
         {picks.map((p) => (
-          <span key={p.member.id} className={`picker${p.member.id === meId ? ' me' : ''} ${p.result}`} title={`${p.member.team_name || p.member.name} picked ${t.short}`}>
+          <span key={p.member.id} className={`picker tipwrap${p.member.id === meId ? ' me' : ''} ${p.result}`} tabIndex={0}>
             <TeamLogo member={p.member} size={22} className="picker-logo" />
+            <span className="tip" role="tooltip">
+              <b>{p.member.team_name || p.member.name}</b>
+              <span>{p.member.name} picked {t.short}</span>
+            </span>
           </span>
         ))}
       </span>
