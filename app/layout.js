@@ -32,6 +32,7 @@ export default async function RootLayout({ children }) {
           {me && (
             <nav>
               <Link href="/">This week</Link>
+              <Link href="/scores">Scores</Link>
               <Link href="/stats">Season</Link>
               {me.is_admin && <Link href="/admin">Commish</Link>}
               <form action={logout}>

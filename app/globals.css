@@ -390,3 +390,36 @@ optgroup { font-weight: 600; }
 .pp-who .tp-logo { width: 64px; height: 64px; }
 .pp-who b { display: block; font: 700 1.25rem/1.15 var(--display); }
 @media (max-width: 420px) { .teampick { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Scores tab ---------- */
+.sb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sb-game { background: var(--paper); border-radius: 10px; padding: 10px 14px 10px; border-left: 4px solid transparent; }
+.sb-game.picked { border-left-color: var(--flag); }
+.sb-game.in { border-left-color: var(--loss); }
+.sb-game.in.picked { border-left-color: var(--loss); }
+.sb-game.redzone { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--loss) 45%, transparent); }
+.sb-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.sb-live { font: 700 0.9rem var(--display); color: var(--loss); letter-spacing: 0.02em; }
+.sb-team { display: grid; grid-template-columns: 32px 1fr auto 44px; gap: 10px; align-items: center; padding: 5px 0; }
+.sb-team img { width: 32px; height: 32px; object-fit: contain; }
+.sb-nologo { width: 32px; height: 32px; }
+.sb-name b { font-weight: 600; }
+.sb-score { font: 800 1.5rem/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; }
+.sb-team.lost { opacity: 0.55; }
+.sb-team.won .sb-score::before { content: '◂ '; font-size: 0.8rem; vertical-align: 2px; color: var(--muted); }
+.ball { color: #8a4b22; margin-left: 6px; font-size: 0.8rem; }
+.sb-pickers { display: flex; gap: 3px; }
+.picker { display: inline-grid; border-radius: 50%; box-shadow: 0 0 0 2px var(--paper); }
+.picker.me { box-shadow: 0 0 0 2px var(--flag); }
+.picker.win { box-shadow: 0 0 0 2px var(--win); }
+.picker.loss { box-shadow: 0 0 0 2px var(--loss); }
+.picker-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--field); display: block; }
+.picker-logo.blank { display: grid; place-items: center; font: 700 0.55rem var(--display); color: var(--muted); }
+.sb-situation { display: grid; gap: 2px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.sb-link { display: inline-block; margin-top: 8px; color: var(--muted); }
+.sb-link:hover { color: var(--ink); }
+h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
+.masthead nav { gap: 6px 14px; flex-wrap: wrap; }
+.masthead nav a, .masthead nav button { white-space: nowrap; }
+@media (max-width: 420px) { .masthead nav { font-size: 0.9rem; gap: 6px 11px; } }
+.masthead nav button.linkish { font-size: inherit; }
