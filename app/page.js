@@ -1,18 +1,28 @@
 import Link from 'next/link';
 import { requireMember } from '@/lib/session';
-import { getSettings, getWeekBundle, getScoresFor } from '@/lib/data';
+import { getSettings, getWeekBundle, getScoresFor, getChatter } from '@/lib/data';
 import { getGames, hasStarted } from '@/lib/games';
 import { lowScorers, allScoresIn, parlayResult, estimateParlay, DEFAULT_STAKE } from '@/lib/stats';
 import GameBoard from './board';
 import PickFlow from './pickflow';
 import TeamLogo from './teamlogo';
 import LiveRefresh from './liverefresh';
+import PickList from './picklist';
 
 const LABEL = { win: 'WIN', loss: 'LOSS', push: 'PUSH', pending: 'Pending' };
 const money = (n) => (n == null ? '—' : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
 const kickoffFmt = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: '2-digit',
 });
+
+const shortDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: '2-digit' });
+function ago(ts) {
+  const mins = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m`;
+  if (mins < 24 * 60) return `${Math.round(mins / 60)}h`;
+  return shortDay.format(new Date(ts));
+}
 
 function gameLabel(g) {
   if (g.completed) return 'Final';
@@ -34,6 +44,7 @@ export default async function WeekPage({ searchParams }) {
     getWeekBundle(settings.season, n),
     n > 1 ? getScoresFor(settings.season, n - 1) : Promise.resolve([]),
   ]);
+  const chatter = await getChatter(week.id);
 
   const nameOf = Object.fromEntries(members.map((m) => [m.id, m.team_name || m.name]));
   const memberOf = Object.fromEntries(members.map((m) => [m.id, m]));
@@ -81,6 +92,15 @@ export default async function WeekPage({ searchParams }) {
     return { state, text: `${abbr} ${mine}, ${opp} ${theirs}`, clock: g.status_detail || 'Live' };
   }
   const liveGames = games.filter((g) => !g.completed && hasStarted(g));
+
+  // Compact version for the picks list: "Ravens ML -175 @ DAL".
+  function shortLeg(p) {
+    if (!p.event_id) return `${p.bet}${p.odds ? ` (${p.odds})` : ''}`;
+    const g = gameOf[p.event_id];
+    const nick = (p.team_name || p.team_abbr || '').split(' ').slice(-1)[0];
+    const opp = g ? (p.team_id === g.home_id ? `vs ${g.away_abbr}` : `@ ${g.home_abbr}`) : '';
+    return `${nick} ML${p.odds ? ` ${p.odds}` : ''} ${opp}`.trim();
+  }
 
   function legText(p) {
     if (!p.event_id) return `${p.bet}${p.odds ? ` (${p.odds})` : ''}`;
@@ -205,33 +225,23 @@ export default async function WeekPage({ searchParams }) {
             </div>
           </section>
         );
+        const people = Object.fromEntries(
+          members.map((m) => [m.id, { id: m.id, name: m.name, team_name: m.team_name, team_abbr: m.team_abbr, team_logo: m.team_logo, logo_url: m.logo_url }])
+        );
+        const rows = legs.map((m) => {
+          const p = pickOf[m.id];
+          const mine = (list) => list.filter((x) => x.pick_member_id === m.id);
+          return {
+            member: people[m.id],
+            pick: p ? { text: shortLeg(p), result: p.result, rationale: p.rationale || null, live: liveOf(p) } : null,
+            rides: mine(chatter.reactions).filter((r) => r.kind === 'ride').map((r) => r.member_id),
+            fades: mine(chatter.reactions).filter((r) => r.kind === 'fade').map((r) => r.member_id),
+            comments: mine(chatter.comments).map((c) => ({ id: c.id, member_id: c.member_id, body: c.body, when: ago(c.created_at) })),
+          };
+        });
         const slipEl = (
           <section className="picks" aria-label={`Week ${n} picks`}>
-            <ul className="legs">
-              {legs.map((m) => {
-                const p = pickOf[m.id];
-                return (
-                  <li key={m.id} className={`leg${m.id === me.id ? ' mine' : ''}`}>
-                    <TeamLogo member={m} />
-                    <span className="who">
-                      {m.team_name || m.name}
-                      {m.team_name && <span className="owner"> {m.name}</span>}
-                    </span>
-                    <span className={`bet${p ? '' : ' empty'}`}>{p ? legText(p) : 'No pick yet'}</span>
-                    {(() => {
-                      const l = liveOf(p);
-                      return l ? (
-                        <span className={`liveline ${l.state}`}>
-                          {l.state === 'lead' ? 'Winning' : l.state === 'trail' ? 'Losing' : 'Tied'} · {l.text} · {l.clock}
-                        </span>
-                      ) : null;
-                    })()}
-                    {p?.rationale && <q className="why">{p.rationale}</q>}
-                    {p && <span className={`stamp ${p.result}`}>{LABEL[p.result]}</span>}
-                  </li>
-                );
-              })}
-            </ul>
+            <PickList rows={rows} weekId={week.id} meId={me.id} isAdmin={!!me.is_admin} people={people} />
           </section>
         );
         const boardEl = matchupWeek ? (

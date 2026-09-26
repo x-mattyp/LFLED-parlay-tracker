@@ -190,6 +190,56 @@ export async function commishPick(_prev, formData) {
   return { ok: `Saved for ${whoLabel}: ${res.game[`${res.side}_name`]} to win.` };
 }
 
+// ---------- Ride / fade and comments ----------
+// Tap Ride or Fade on someone else's pick; tap the same one again to undo.
+export async function reactToPick(formData) {
+  const me = await requireMember();
+  const weekId = Number(formData.get('week_id'));
+  const pickMemberId = Number(formData.get('pick_member_id'));
+  const kind = String(formData.get('kind'));
+  if (!['ride', 'fade'].includes(kind) || pickMemberId === me.id) return;
+  const existing = check(
+    await db().from('reactions').select('kind')
+      .eq('week_id', weekId).eq('pick_member_id', pickMemberId).eq('member_id', me.id).limit(1)
+  )[0];
+  if (existing?.kind === kind) {
+    check(await db().from('reactions').delete().eq('week_id', weekId).eq('pick_member_id', pickMemberId).eq('member_id', me.id));
+  } else {
+    check(
+      await db().from('reactions').upsert(
+        { week_id: weekId, pick_member_id: pickMemberId, member_id: me.id, kind, created_at: new Date().toISOString() },
+        { onConflict: 'week_id,pick_member_id,member_id' }
+      )
+    );
+  }
+  refresh();
+}
+
+export async function addComment(_prev, formData) {
+  const me = await requireMember();
+  const body = String(formData.get('body') || '').trim().slice(0, 500);
+  if (!body) return { error: 'Write something first.' };
+  const { error } = await db().from('comments').insert({
+    week_id: Number(formData.get('week_id')),
+    pick_member_id: Number(formData.get('pick_member_id')),
+    member_id: me.id,
+    body,
+  });
+  if (error) return { error: `Couldn't post that: ${error.message}` };
+  refresh();
+  return { ok: Date.now() };
+}
+
+// Delete your own comment (the commissioner can delete any).
+export async function deleteComment(formData) {
+  const me = await requireMember();
+  const id = Number(formData.get('comment_id'));
+  let q = db().from('comments').delete().eq('id', id);
+  if (!me.is_admin) q = q.eq('member_id', me.id);
+  check(await q);
+  refresh();
+}
+
 // ---------- Commissioner tools ----------
 export async function gradePick(formData) {
   await requireAdmin();
