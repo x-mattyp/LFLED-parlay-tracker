@@ -536,3 +536,7 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .tip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: #16213a; }
 .tipwrap:hover .tip, .tipwrap:focus .tip, .tipwrap:focus-within .tip { opacity: 1; transform: translate(-50%, 0); }
 .tipwrap:focus-visible .legowner, .tipwrap:focus-visible .picker-logo, .tipwrap:focus-visible .face-logo { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Ride or fade record */
+.rf tr.lead td { background: color-mix(in srgb, var(--flag) 16%, var(--paper)); }
+.rf tr.lead td:first-child { box-shadow: inset 3px 0 0 var(--flag); }

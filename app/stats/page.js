@@ -1,6 +1,6 @@
 import { requireMember } from '@/lib/session';
 import { getSettings, getSeason } from '@/lib/data';
-import { seasonStats } from '@/lib/stats';
+import { seasonStats, rideFadeStats } from '@/lib/stats';
 
 const MARK = { win: 'W', loss: 'L', push: 'P', pending: '·' };
 
@@ -9,6 +9,9 @@ export default async function StatsPage() {
   const settings = await getSettings();
   const season = await getSeason(settings.season);
   const { rows, parlays, parlayRecord } = seasonStats(season);
+  const rf = rideFadeStats(season);
+  const anyVotes = rf.some((r) => r.right + r.wrong + r.pending > 0);
+  const rec = (w, l) => (w + l ? `${w}–${l}` : '—');
   const { weeks, picks } = season;
   const pickAt = new Map(picks.map((p) => [`${p.week_id}:${p.member_id}`, p]));
 
@@ -50,6 +53,40 @@ export default async function StatsPage() {
         </table>
       </div>
       <p className="muted small">&ldquo;Times bought&rdquo; counts each week someone finished with the lowest fantasy score.</p>
+
+      <h2>Ride or fade record</h2>
+      {anyVotes ? (
+        <>
+          <div className="tablewrap">
+            <table className="rf">
+              <thead>
+                <tr>
+                  <th>Player</th><th>Rides</th><th>Fades</th><th>Overall</th><th>Hit %</th><th>Got ridden</th><th>Got faded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rf.map((r, i) => (
+                  <tr key={r.member.id} className={i === 0 && r.pct != null ? 'lead' : ''}>
+                    <td>{r.member.team_name || r.member.name}{r.member.team_name && <span className="owner"> {r.member.name}</span>}</td>
+                    <td>{rec(r.rideW, r.rideL)}</td>
+                    <td>{rec(r.fadeW, r.fadeL)}</td>
+                    <td className="w">{rec(r.right, r.wrong)}</td>
+                    <td>{r.pct == null ? '—' : `${Math.round(r.pct * 100)}%`}</td>
+                    <td>{r.gotRides || '—'}</td>
+                    <td>{r.gotFades || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted small">
+            A ride is right when the pick wins, and a fade is right when it loses. Pushes and games still being played don&rsquo;t count.
+            &ldquo;Got ridden&rdquo; and &ldquo;got faded&rdquo; count votes on that person&rsquo;s own picks.
+          </p>
+        </>
+      ) : (
+        <p className="muted">No rides or fades yet. Tap Ride or Fade on someone&rsquo;s pick on This Week to start a record.</p>
+      )}
 
       <h2>Week by week</h2>
       {weeks.length ? (
