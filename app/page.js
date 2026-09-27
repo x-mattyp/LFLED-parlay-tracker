@@ -190,10 +190,17 @@ export default async function WeekPage({ searchParams }) {
                 const what = p ? (p.team_name ? `${p.team_name} ML` : p.bet) : 'No pick yet';
                 const mark = p?.result === 'win' ? '✓' : p?.result === 'loss' ? '✕' : p?.result === 'push' ? '–' : null;
                 const l = liveOf(p);
-                const tip = l ? `${l.text} · ${l.clock}` : p ? LABEL[p.result] : '';
+                const started = g ? hasStarted(g) : false;
+                const statusText = g ? gameLabel(g) : p ? LABEL[p.result] : '';
+                const scoreText = g
+                  ? started
+                    ? `${g.away_abbr} ${g.away_score ?? 0}, ${g.home_abbr} ${g.home_score ?? 0}`
+                    : `${g.away_abbr} at ${g.home_abbr}`
+                  : '';
                 return (
                   <li key={m.id} style={{ '--i': i }} className={`legcell${m.id === me.id ? ' me' : ''}`}>
-                   <span className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`} title={`${what}${tip ? ` (${tip})` : ''}`}>
+                   <span className="tipwrap" tabIndex={0}>
+                    <span className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`}>
                     {logo ? (
                       <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
                     ) : (
@@ -201,6 +208,26 @@ export default async function WeekPage({ searchParams }) {
                     )}
                     {mark && <span className="chipmark" aria-hidden="true">{mark}</span>}
                     {l && <span className="chiplive" aria-hidden="true" />}
+                    </span>
+                    <span className="tip tipgame" role="tooltip">
+                      <b>{what}</b>
+                      {g && (
+                        <span className="tipscore">
+                          <span className={p.team_id === g.away_id ? 'on' : undefined}>
+                            {g.away_abbr}{started ? ` ${g.away_score ?? 0}` : ''}
+                          </span>
+                          <span className="tipvs">{started ? '–' : '@'}</span>
+                          <span className={p.team_id === g.home_id ? 'on' : undefined}>
+                            {g.home_abbr}{started ? ` ${g.home_score ?? 0}` : ''}
+                          </span>
+                        </span>
+                      )}
+                      {statusText && (
+                        <span className={g && started && !g.completed ? 'tipnow' : undefined}>
+                          {statusText}{p?.odds ? ` · ${p.odds}` : ''}
+                        </span>
+                      )}
+                    </span>
                    </span>
                     <span className="tipwrap" tabIndex={0}>
                       <TeamLogo member={m} size={22} className="legowner" />
@@ -209,7 +236,9 @@ export default async function WeekPage({ searchParams }) {
                         {m.team_name && <span>{m.name}</span>}
                       </span>
                     </span>
-                    <span className="sr-only">{who}: {what}{tip ? `, ${tip}` : ''}</span>
+                    <span className="sr-only">
+                      {who}: {what}{scoreText ? `, ${scoreText}` : ''}{statusText ? `, ${statusText}` : ''}
+                    </span>
                   </li>
                 );
               })}
