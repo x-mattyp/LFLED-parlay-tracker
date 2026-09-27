@@ -91,9 +91,11 @@ function Row({ row, weekId, meId, isAdmin, people, open, onOpen, onClose }) {
   );
   const mine = m.id === meId;
   const myVote = votes.rides.includes(meId) ? 'ride' : votes.fades.includes(meId) ? 'fade' : null;
+  const shut = !!p?.locked;
   const titleId = `pk-title-${m.id}`;
 
   const vote = (kind) => {
+    if (shut) return;
     const fd = new FormData();
     fd.set('week_id', weekId);
     fd.set('pick_member_id', m.id);
@@ -131,12 +133,27 @@ function Row({ row, weekId, meId, isAdmin, people, open, onOpen, onClose }) {
             </span>
           ) : (
             <>
-              <button type="button" className={`qv ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
+              <button
+                type="button"
+                className={`qv ride${myVote === 'ride' ? ' on' : ''}`}
+                onClick={() => vote('ride')}
+                aria-pressed={myVote === 'ride'}
+                disabled={shut}
+                title={shut ? 'Locked at kickoff' : undefined}
+              >
                 Ride{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
               </button>
-              <button type="button" className={`qv fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
+              <button
+                type="button"
+                className={`qv fade${myVote === 'fade' ? ' on' : ''}`}
+                onClick={() => vote('fade')}
+                aria-pressed={myVote === 'fade'}
+                disabled={shut}
+                title={shut ? 'Locked at kickoff' : undefined}
+              >
                 Fade{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
               </button>
+              {shut && <span className="pk-lock small muted">🔒 Locked</span>}
             </>
           )}
           <button type="button" className="qv talk" onClick={onOpen}>
@@ -205,12 +222,20 @@ function Row({ row, weekId, meId, isAdmin, people, open, onOpen, onClose }) {
 
           {!mine && (
             <div className="sheet-actions">
-              <button type="button" className={`vote ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
-                Ride it{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
-              </button>
-              <button type="button" className={`vote fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
-                Fade it{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
-              </button>
+              {shut ? (
+                <p className="sheet-locked muted small">
+                  🔒 {myVote ? `You're ${myVote === 'ride' ? 'riding' : 'fading'} this one.` : 'You passed on this one.'} Ride and fade locked at kickoff.
+                </p>
+              ) : (
+                <>
+                  <button type="button" className={`vote ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
+                    Ride it{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
+                  </button>
+                  <button type="button" className={`vote fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
+                    Fade it{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </Sheet>

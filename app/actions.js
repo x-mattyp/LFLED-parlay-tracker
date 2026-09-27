@@ -192,12 +192,34 @@ export async function commishPick(_prev, formData) {
 
 // ---------- Ride / fade and comments ----------
 // Tap Ride or Fade on someone else's pick; tap the same one again to undo.
+// A ride or fade is locked in once that pick's game kicks off — no switching
+// sides after you've seen a drive. Legacy weeks with free-text picks have no
+// game to check, so they fall back to the week's own lock.
+async function reactionsClosed(weekId, pickMemberId) {
+  const pick = check(
+    await db().from('picks').select('event_id').eq('week_id', weekId).eq('member_id', pickMemberId).limit(1)
+  )[0];
+  if (!pick) return true;
+  if (pick.event_id) {
+    const g = check(
+      await db().from('games').select('kickoff, state, completed').eq('event_id', pick.event_id).limit(1)
+    )[0];
+    return g ? hasStarted(g) : false;
+  }
+  const w = check(await db().from('weeks').select('locked').eq('id', weekId).limit(1))[0];
+  return !!w?.locked;
+}
+
 export async function reactToPick(formData) {
   const me = await requireMember();
   const weekId = Number(formData.get('week_id'));
   const pickMemberId = Number(formData.get('pick_member_id'));
   const kind = String(formData.get('kind'));
   if (!['ride', 'fade'].includes(kind) || pickMemberId === me.id) return;
+  if (await reactionsClosed(weekId, pickMemberId)) {
+    refresh();
+    return;
+  }
   const existing = check(
     await db().from('reactions').select('kind')
       .eq('week_id', weekId).eq('pick_member_id', pickMemberId).eq('member_id', me.id).limit(1)

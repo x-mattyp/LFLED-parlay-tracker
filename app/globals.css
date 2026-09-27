@@ -546,6 +546,11 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .qv.fade.on { background: var(--loss); border-color: var(--loss); color: #fff; }
 .qv.talk { margin-left: auto; color: var(--muted); }
 .qv.talk:hover { color: var(--ink); border-color: var(--ink); }
+.qv:disabled { opacity: 0.4; cursor: default; }
+.qv:disabled:hover { border-color: var(--rule); color: var(--ink); }
+.qv.ride.on:disabled, .qv.fade.on:disabled { opacity: 0.75; }
+.pk-lock { white-space: nowrap; }
+.sheet-locked { margin: 0; text-align: center; line-height: 1.45; }
 .qv-label { font-weight: 600; }
 .pk-mine { display: flex; gap: 10px; font-weight: 600; }
 

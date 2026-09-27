@@ -265,10 +265,16 @@ export default async function WeekPage({ searchParams }) {
         );
         const rows = legs.map((m) => {
           const p = pickOf[m.id];
+          const pg = p?.event_id ? gameOf[p.event_id] : null;
+          // Ride/fade closes at kickoff. Legacy free-text picks have no game,
+          // so they follow the week's lock instead.
+          const locked = p ? (pg ? hasStarted(pg) : !p.event_id && !!week.locked) : false;
           const mine = (list) => list.filter((x) => x.pick_member_id === m.id);
           return {
             member: people[m.id],
-            pick: p ? { text: shortLeg(p), result: p.result, rationale: p.rationale || null, live: liveOf(p) } : null,
+            pick: p
+              ? { text: shortLeg(p), result: p.result, rationale: p.rationale || null, live: liveOf(p), locked }
+              : null,
             rides: mine(chatter.reactions).filter((r) => r.kind === 'ride').map((r) => r.member_id),
             fades: mine(chatter.reactions).filter((r) => r.kind === 'fade').map((r) => r.member_id),
             comments: mine(chatter.comments).map((c) => ({ id: c.id, member_id: c.member_id, body: c.body, when: ago(c.created_at) })),
