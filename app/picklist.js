@@ -69,7 +69,6 @@ function Sheet({ onClose, labelledBy, children }) {
   return (
     <div className="sheet-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby={labelledBy} ref={panel} tabIndex={-1}>
-        <span className="sheet-grab" aria-hidden="true" />
         {children}
       </div>
     </div>

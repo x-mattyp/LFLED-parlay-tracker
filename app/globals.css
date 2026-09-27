@@ -241,12 +241,24 @@ optgroup { font-weight: 600; }
   --ticket-muted: #5d6880;
   --ticket-rule: #d9dde4;
   position: relative;
+  /* Own stacking context so the ::before below can sit at z-index -1 behind
+     the content without falling behind the page background. */
+  isolation: isolate;
   color: var(--ticket-ink);
-  background: var(--paper-ticket);
+  background: transparent;
   margin: 10px 0 8px;
   padding: 22px 20px 20px;
+}
+/* Torn edges live on this layer, not on .ticket itself: a mask clips its
+   element's whole subtree, so masking .ticket cut off any tooltip that
+   reached past its edge. */
+.ticket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper-ticket);
   filter: drop-shadow(0 10px 18px rgba(10, 20, 40, 0.28));
-  /* torn edges, top and bottom */
   -webkit-mask:
     conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 16px 51% repeat-x,
     conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 16px 51% repeat-x;
@@ -460,27 +472,31 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .t-com { color: var(--muted); }
 .pk-row.mine { box-shadow: inset 3px 0 0 var(--flag); }
 
-/* Tapping a pick opens a bottom sheet — the feed dims instead of being covered */
+/* Tapping a pick opens a centred modal — the feed dims instead of being covered */
 .sheet-scrim {
   position: fixed; inset: 0; z-index: 60; background: rgba(8, 12, 22, 0.62);
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
+  padding:
+    20px
+    calc(16px + env(safe-area-inset-right, 0px))
+    calc(20px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px));
   animation: sheet-fade 140ms ease both;
 }
 .sheet {
-  width: min(560px, 100%); max-height: 88vh; overflow-y: auto; outline: none;
+  width: min(560px, 100%); max-height: min(86vh, 760px); overflow-y: auto; outline: none;
   background: var(--paper); color: var(--ink);
-  border: 1px solid var(--rule); border-bottom: 0; border-radius: 18px 18px 0 0;
-  padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--rule); border-radius: 18px;
+  padding: 18px;
   display: grid; gap: 14px; align-content: start;
-  box-shadow: 0 -18px 44px -14px rgba(0, 0, 0, 0.5);
-  animation: sheet-rise 180ms cubic-bezier(.22, .9, .3, 1) both;
+  box-shadow: 0 26px 64px -22px rgba(0, 0, 0, 0.62);
+  animation: sheet-pop 170ms cubic-bezier(.22, .9, .3, 1) both;
 }
 @keyframes sheet-fade { from { opacity: 0; } }
-@keyframes sheet-rise { from { transform: translateY(14px); } }
+@keyframes sheet-pop { from { opacity: 0; transform: scale(0.97); } }
 @media (prefers-reduced-motion: reduce) {
   .sheet-scrim, .sheet { animation: none; }
 }
-.sheet-grab { width: 44px; height: 4px; border-radius: 999px; background: var(--rule); justify-self: center; }
 .sheet-head { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; }
 .sheet-head .pk-logo { width: 42px; height: 42px; }
 .sheet-who { display: grid; min-width: 0; }
@@ -583,6 +599,15 @@ h2 .livebadge { font-size: 0.75rem; vertical-align: 5px; margin-right: 6px; }
 .tipscore .on { color: #ffd34d; }
 .tipvs { font-weight: 400; font-size: 0.75rem; color: #9aa4b6; }
 .tipnow { color: #ff9d94; font-weight: 600; }
+/* Narrow screens: a tooltip centred on a 38px chip near either end of the
+   row runs off the viewport, so span the row instead and drop the arrow. */
+@media (max-width: 560px) {
+  .legdots { position: relative; }
+  .legdots .legcell, .chipwrap { position: static; }
+  .tipgame { left: 0; right: 0; transform: none; max-width: none; min-width: 0; }
+  .chipwrap:hover .tipgame, .chipwrap:focus .tipgame, .chipwrap:focus-within .tipgame { transform: none; }
+  .tipgame::after { display: none; }
+}
 
 /* Ride or fade record */
 .rf tr.lead td { background: color-mix(in srgb, var(--flag) 16%, var(--paper)); }

@@ -199,7 +199,7 @@ export default async function WeekPage({ searchParams }) {
                   : '';
                 return (
                   <li key={m.id} style={{ '--i': i }} className={`legcell${m.id === me.id ? ' me' : ''}`}>
-                   <span className="tipwrap" tabIndex={0}>
+                   <span className="tipwrap chipwrap" tabIndex={0}>
                     <span className={`legchip ${p ? p.result : 'none'}${l ? ` live ${l.state}` : ''}`}>
                     {logo ? (
                       <img src={logo} alt={p.team_abbr || ''} width="30" height="30" />
