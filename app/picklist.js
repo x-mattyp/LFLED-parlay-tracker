@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useOptimistic, useRef, useState, useTransition } from 'react';
+import { useActionState, useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from 'react';
 import { reactToPick, addComment, deleteComment } from './actions';
 import TeamLogo from './teamlogo';
 
@@ -41,8 +41,42 @@ function CommentForm({ weekId, pickMemberId }) {
   );
 }
 
-function Row({ row, weekId, meId, isAdmin, people }) {
-  const [open, setOpen] = useState(false);
+/* Bottom sheet: dims the feed instead of covering the next pick. */
+function Sheet({ onClose, labelledBy, children }) {
+  const panel = useRef(null);
+  const opener = useRef(null);
+
+  useEffect(() => {
+    opener.current = document.activeElement;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    panel.current?.focus();
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      if (opener.current instanceof HTMLElement) opener.current.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div className="sheet-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby={labelledBy} ref={panel} tabIndex={-1}>
+        <span className="sheet-grab" aria-hidden="true" />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Row({ row, weekId, meId, isAdmin, people, open, onOpen, onClose }) {
   const [, startTransition] = useTransition();
   const { member: m, pick: p } = row;
   const [votes, setVote] = useOptimistic(
@@ -57,8 +91,11 @@ function Row({ row, weekId, meId, isAdmin, people }) {
   );
   const mine = m.id === meId;
   const myVote = votes.rides.includes(meId) ? 'ride' : votes.fades.includes(meId) ? 'fade' : null;
+  const shut = !!p?.locked;
+  const titleId = `pk-title-${m.id}`;
 
   const vote = (kind) => {
+    if (shut) return;
     const fd = new FormData();
     fd.set('week_id', weekId);
     fd.set('pick_member_id', m.id);
@@ -70,17 +107,15 @@ function Row({ row, weekId, meId, isAdmin, people }) {
   };
 
   return (
-    <li className={`pk-row${mine ? ' mine' : ''}${open ? ' open' : ''}${p ? '' : ' nopick'}`}>
-      <button type="button" className="pk-main" onClick={() => p && setOpen((v) => !v)} aria-expanded={open} disabled={!p}>
+    <li className={`pk-row${mine ? ' mine' : ''}${p ? '' : ' nopick'}`}>
+      <button type="button" className="pk-main" onClick={() => p && onOpen()} disabled={!p}>
         <TeamLogo member={m} size={36} className="pk-logo" />
         <span className="pk-text">
           <span className="pk-team">
             {m.team_name || m.name}
             {mine && <span className="pk-you"> you</span>}
           </span>
-          <span className="pk-bet">
-            {p ? p.text : 'No pick yet'}
-          </span>
+          <span className="pk-bet">{p ? p.text : 'No pick yet'}</span>
           {p?.live && <span className={`pk-live ${p.live.state}`}>{p.live.text} · {p.live.clock}</span>}
         </span>
         <span className="pk-side">
@@ -98,70 +133,135 @@ function Row({ row, weekId, meId, isAdmin, people }) {
             </span>
           ) : (
             <>
-              <button type="button" className={`qv ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
+              <button
+                type="button"
+                className={`qv ride${myVote === 'ride' ? ' on' : ''}`}
+                onClick={() => vote('ride')}
+                aria-pressed={myVote === 'ride'}
+                disabled={shut}
+                title={shut ? 'Locked at kickoff' : undefined}
+              >
                 Ride{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
               </button>
-              <button type="button" className={`qv fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
+              <button
+                type="button"
+                className={`qv fade${myVote === 'fade' ? ' on' : ''}`}
+                onClick={() => vote('fade')}
+                aria-pressed={myVote === 'fade'}
+                disabled={shut}
+                title={shut ? 'Locked at kickoff' : undefined}
+              >
                 Fade{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
               </button>
+              {shut && <span className="pk-lock small muted">🔒 Locked</span>}
             </>
           )}
-          <button type="button" className={`qv talk${open ? ' on' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          <button type="button" className="qv talk" onClick={onOpen}>
             💬{row.comments.length > 0 ? <b>{row.comments.length}</b> : <span className="qv-label">Comment</span>}
           </button>
         </div>
       )}
 
-      {p?.rationale && !open && (
-        <span className="pk-pop" role="tooltip">
-          <q>{p.rationale}</q>
-          <span className="muted small">Tap to ride, fade or comment</span>
-        </span>
-      )}
-
       {open && p && (
-        <div className="pk-panel">
-          {p.rationale && <q className="pk-why">{p.rationale}</q>}
+        <Sheet onClose={onClose} labelledBy={titleId}>
+          <div className="sheet-head">
+            <TeamLogo member={m} size={42} className="pk-logo" />
+            <span className="sheet-who">
+              <b id={titleId}>{m.team_name || m.name}</b>
+              <span className="muted small">{m.team_name ? m.name : 'Their pick'}{mine ? ' · you' : ''}</span>
+            </span>
+            <button type="button" className="sheet-x" onClick={onClose} aria-label="Close">✕</button>
+          </div>
 
-          {(votes.rides.length > 0 || votes.fades.length > 0) && (
-            <div className="pk-who">
-              {votes.rides.length > 0 && <span><span className="t-ride">Riding</span> <Faces ids={votes.rides} people={people} /></span>}
-              {votes.fades.length > 0 && <span><span className="t-fade">Fading</span> <Faces ids={votes.fades} people={people} /></span>}
+          <div className="sheet-bet">
+            <span className="sheet-bet-text">{p.text}</span>
+            <span className={`stamp ${p.result}`}>{STAMP[p.result]}</span>
+          </div>
+          {p.live && <p className={`pk-live ${p.live.state} sheet-live`}>{p.live.text} · {p.live.clock}</p>}
+
+          <div className="sheet-body">
+            {p.rationale ? (
+              <div className="sheet-why">
+                <span className="sheet-label">{mine ? 'Your reasoning' : 'Why they like it'}</span>
+                <q className="pk-why">{p.rationale}</q>
+              </div>
+            ) : (
+              <p className="muted small sheet-why-none">No reasoning given.</p>
+            )}
+
+            {(votes.rides.length > 0 || votes.fades.length > 0) && (
+              <div className="pk-who">
+                {votes.rides.length > 0 && <span><span className="t-ride">Riding</span> <Faces ids={votes.rides} people={people} /></span>}
+                {votes.fades.length > 0 && <span><span className="t-fade">Fading</span> <Faces ids={votes.fades} people={people} /></span>}
+              </div>
+            )}
+
+            <ul className="pk-comments">
+              {row.comments.map((c) => {
+                const who = people[c.member_id] || { id: c.member_id, name: 'Someone' };
+                return (
+                  <li key={c.id}>
+                    <TeamLogo member={who} size={28} className="c-logo" />
+                    <div className="c-bubble">
+                      <b>{who.team_name || who.name}</b> <span className="muted small">{who.name} · {c.when}</span>
+                      <p>{c.body}</p>
+                    </div>
+                    {(c.member_id === meId || isAdmin) && (
+                      <form action={deleteComment} className="c-del">
+                        <input type="hidden" name="comment_id" value={c.id} />
+                        <button className="linkish small" title="Delete comment" aria-label="Delete comment">✕</button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <CommentForm weekId={weekId} pickMemberId={m.id} />
+          </div>
+
+          {!mine && (
+            <div className="sheet-actions">
+              {shut ? (
+                <p className="sheet-locked muted small">
+                  🔒 {myVote ? `You're ${myVote === 'ride' ? 'riding' : 'fading'} this one.` : 'You passed on this one.'} Ride and fade locked at kickoff.
+                </p>
+              ) : (
+                <>
+                  <button type="button" className={`vote ride${myVote === 'ride' ? ' on' : ''}`} onClick={() => vote('ride')} aria-pressed={myVote === 'ride'}>
+                    Ride it{votes.rides.length > 0 && <b>{votes.rides.length}</b>}
+                  </button>
+                  <button type="button" className={`vote fade${myVote === 'fade' ? ' on' : ''}`} onClick={() => vote('fade')} aria-pressed={myVote === 'fade'}>
+                    Fade it{votes.fades.length > 0 && <b>{votes.fades.length}</b>}
+                  </button>
+                </>
+              )}
             </div>
           )}
-
-          <ul className="pk-comments">
-            {row.comments.map((c) => {
-              const who = people[c.member_id] || { id: c.member_id, name: 'Someone' };
-              return (
-                <li key={c.id}>
-                  <TeamLogo member={who} size={28} className="c-logo" />
-                  <div className="c-bubble">
-                    <b>{who.team_name || who.name}</b> <span className="muted small">{who.name} · {c.when}</span>
-                    <p>{c.body}</p>
-                  </div>
-                  {(c.member_id === meId || isAdmin) && (
-                    <form action={deleteComment} className="c-del">
-                      <input type="hidden" name="comment_id" value={c.id} />
-                      <button className="linkish small" title="Delete comment" aria-label="Delete comment">✕</button>
-                    </form>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <CommentForm weekId={weekId} pickMemberId={m.id} />
-        </div>
+        </Sheet>
       )}
     </li>
   );
 }
 
 export default function PickList({ rows, weekId, meId, isAdmin, people }) {
+  const [openId, setOpenId] = useState(null);
+  const close = useCallback(() => setOpenId(null), []);
+
   return (
     <ul className="pk-list">
       {rows.map((row) => (
-        <Row key={row.member.id} row={row} weekId={weekId} meId={meId} isAdmin={isAdmin} people={people} />
+        <Row
+          key={row.member.id}
+          row={row}
+          weekId={weekId}
+          meId={meId}
+          isAdmin={isAdmin}
+          people={people}
+          open={openId === row.member.id}
+          onOpen={() => setOpenId(row.member.id)}
+          onClose={close}
+        />
       ))}
     </ul>
   );

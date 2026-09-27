@@ -112,7 +112,12 @@ export default async function ScoresPage({ searchParams }) {
         </div>
       </div>
 
-      {error && <p className="msg err">Couldn&rsquo;t load scores from ESPN right now. Try again in a minute.</p>}
+      {error && (
+        <p className="msg err">
+          Couldn&rsquo;t load scores from ESPN right now. Try again in a minute.
+          <span className="muted small"> ({error})</span>
+        </p>
+      )}
       {!error && !games.length && <p className="muted">No games on the schedule for week {n}.</p>}
 
       {live.length > 0 && (

@@ -52,7 +52,7 @@ export default async function StatsPage() {
           </tbody>
         </table>
       </div>
-      <p className="muted small">&ldquo;Times bought&rdquo; counts each week someone finished with the lowest fantasy score.</p>
+      <p className="muted small">&ldquo;Times bought&rdquo; counts each parlay someone paid for by finishing the week before with the lowest fantasy score.</p>
 
       <h2>Ride or fade record</h2>
       {anyVotes ? (
